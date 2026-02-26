@@ -24,9 +24,7 @@ export function Hero() {
     document.getElementById("menu")?.scrollIntoView({ behavior: "smooth" });
   };
 
-  const parallaxSlow = Math.min(scrollY * 0.3, 80);
-  const parallaxFast = Math.min(scrollY * 0.5, 140);
-  const overlayOpacity = Math.max(0.5 - scrollY * 0.0005, 0.2);
+  const parallax = Math.min(scrollY * 0.3, 80);
   const bgScale = 1.05 + Math.min(scrollY * 0.0001, 0.07);
   const textOpacity = Math.max(1 - scrollY * 0.002, 0);
   const textLift = Math.min(scrollY * 0.15, 40);
@@ -34,62 +32,43 @@ export function Hero() {
   return (
     <section ref={sectionRef} className="relative h-screen w-full flex items-center justify-center overflow-hidden bg-black">
       
-      {/* Layer 1: Day Interior — Background Base */}
+      {/* Single Hero Image with Parallax */}
       <div 
         className="absolute inset-0 w-full h-full z-0"
         style={{
-          transform: `translateY(${parallaxSlow}px) scale(${bgScale})`,
+          transform: `translateY(${parallax}px) scale(${bgScale})`,
           willChange: "transform",
         }}
       >
         <img 
-          src="/images/hero-day.jpg" 
-          alt="" 
+          src="/images/hero-night.jpg" 
+          alt="Kebabil Restaurant" 
           className="w-full h-full object-cover"
           loading="eager"
           fetchPriority="high"
         />
       </div>
 
-      {/* Layer 2: Night Facade — Atmosphere Overlay */}
-      <div 
-        className="absolute inset-0 w-full h-full z-10"
+      {/* Cinematic Gradient Overlay */}
+      <div className="absolute inset-0 z-10 pointer-events-none"
         style={{
-          transform: `translateY(${parallaxFast}px)`,
-          opacity: overlayOpacity,
-          willChange: "transform, opacity",
-        }}
-      >
-        <img 
-          src="/images/hero-night.jpg" 
-          alt="" 
-          className="w-full h-full object-cover blur-[2px]"
-          loading="lazy"
-          style={{ filter: "blur(2px) sepia(0.3) saturate(1.4)" }}
-        />
-      </div>
-
-      {/* Layer 3: Warm Cinematic Gradient */}
-      <div className="absolute inset-0 z-20 pointer-events-none"
-        style={{
-          background: "linear-gradient(to bottom, transparent 0%, rgba(198,156,109,0.08) 30%, rgba(198,156,109,0.15) 50%, rgba(28,28,28,0.7) 80%, rgba(28,28,28,0.95) 100%)",
-          mixBlendMode: "multiply",
+          background: "linear-gradient(to bottom, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0.1) 40%, rgba(28,28,28,0.6) 75%, rgba(28,28,28,0.95) 100%)",
         }}
       />
       
       {/* Vignette */}
-      <div className="absolute inset-0 z-20 pointer-events-none"
+      <div className="absolute inset-0 z-10 pointer-events-none"
         style={{
-          background: "radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.6) 100%)",
+          background: "radial-gradient(ellipse at center, transparent 50%, rgba(0,0,0,0.5) 100%)",
         }}
       />
 
       {/* Film Grain */}
-      <div className="absolute inset-0 z-20 pointer-events-none opacity-[0.04] noise-bg" />
+      <div className="absolute inset-0 z-10 pointer-events-none opacity-[0.04] noise-bg" />
 
-      {/* Layer 4: Content */}
+      {/* Content */}
       <div 
-        className="relative z-30 flex flex-col items-center justify-center text-center px-4 max-w-4xl mx-auto h-full w-full"
+        className="relative z-20 flex flex-col items-center justify-center text-center px-4 max-w-4xl mx-auto h-full w-full"
         style={{
           transform: `translateY(-${textLift}px)`,
           opacity: textOpacity,
@@ -135,7 +114,7 @@ export function Hero() {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 1.5, duration: 1 }}
-        className="absolute bottom-0 left-1/2 -translate-x-1/2 z-30 flex flex-col items-center"
+        className="absolute bottom-0 left-1/2 -translate-x-1/2 z-20 flex flex-col items-center"
         style={{ opacity: textOpacity }}
       >
         <div className="w-[1px] h-24 bg-white/10 overflow-hidden relative">
