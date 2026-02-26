@@ -5,6 +5,7 @@ import { Menu } from "lucide-react";
 import { motion } from "framer-motion";
 import logoImg from "@assets/1000037956-removebg-preview_1772137922663.png";
 import { OrderDialog } from "./OrderDialog";
+import { TransparentLogo } from "./TransparentLogo";
 
 export function Navbar() {
   const [scrolled, setScrolled] = useState(false);
@@ -38,7 +39,7 @@ export function Navbar() {
       <div className="max-w-7xl mx-auto px-4 md:px-8 flex items-center justify-between">
         
         <div className="flex items-center gap-2 cursor-pointer" onClick={() => window.scrollTo({top: 0, behavior: 'smooth'})}>
-           <img src={logoImg} alt="Kebabil Logo" className="h-12 md:h-16 w-auto object-contain drop-shadow-lg" />
+           <TransparentLogo src={logoImg} alt="Kebabil Logo" className="h-12 md:h-16 w-auto object-contain drop-shadow-lg" />
         </div>
 
         {/* Desktop Nav */}
