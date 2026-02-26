@@ -20,7 +20,7 @@ export function OrderDialog({ children }: { children: React.ReactNode }) {
           
           <Button 
             className="w-full h-14 bg-[#25D366] hover:bg-[#20bd5a] text-white flex items-center justify-center gap-3 text-sm uppercase tracking-widest rounded-none shadow-[0_0_15px_rgba(37,211,102,0.2)] transition-all"
-            onClick={() => window.open("https://wa.me/919699966770?text=Hi,%20I'd%20like%20to%20place%20an%20order", "_blank")}
+            onClick={() => window.open("https://wa.me/918669667566?text=Hi,%20I'd%20like%20to%20place%20an%20order", "_blank")}
           >
             <MessageCircle className="w-5 h-5" />
             WhatsApp Order
