@@ -3,12 +3,12 @@ import { motion } from "framer-motion";
 export function Experience() {
   return (
     <section className="relative h-[70vh] min-h-[600px] w-full flex items-center justify-center overflow-hidden">
-      {/* Parallax Background */}
+      {/* Background — Interior Day Image */}
       <div 
         className="absolute inset-0 w-full h-full bg-cover bg-center bg-fixed z-0 scale-105"
-        style={{ backgroundImage: "url('/images/experience-fire.png')" }}
+        style={{ backgroundImage: "url('/images/interior-day.jpg')" }}
       />
-      <div className="absolute inset-0 bg-black/70 z-10" />
+      <div className="absolute inset-0 bg-black/60 z-10" />
       <div className="absolute inset-0 bg-gradient-to-b from-background via-transparent to-background z-10" />
 
       <div className="relative z-20 text-center px-4 max-w-5xl mx-auto flex flex-col items-center">
