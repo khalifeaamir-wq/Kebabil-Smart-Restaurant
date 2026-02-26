@@ -42,8 +42,8 @@ const menuData = [
   },
 ];
 
-async function seed() {
-  console.log("Seeding menu data...");
+export async function seedIfEmpty() {
+  console.log("Checking menu data...");
 
   const existingCategories = await db.select().from(menuCategories);
   if (existingCategories.length > 0) {
@@ -51,6 +51,7 @@ async function seed() {
     return;
   }
 
+  console.log("Seeding menu data...");
   for (let i = 0; i < menuData.length; i++) {
     const catData = menuData[i];
     const [cat] = await db.insert(menuCategories).values({ name: catData.category, sortOrder: i }).returning();
@@ -73,4 +74,3 @@ async function seed() {
   console.log("Menu seeded successfully!");
 }
 
-seed().then(() => process.exit(0)).catch(e => { console.error(e); process.exit(1); });
