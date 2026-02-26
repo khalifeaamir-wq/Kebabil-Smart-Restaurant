@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { Hero } from "@/components/Hero";
 import { About } from "@/components/About";
 import { SignatureDishes } from "@/components/SignatureDishes";
@@ -7,6 +8,31 @@ import { Contact } from "@/components/Contact";
 import { Navbar } from "@/components/Navbar";
 import { OrderDialog } from "@/components/OrderDialog";
 import logoImg from "@assets/468146293_3917545001849558_7757020803682063832_n-removebg-prev_1772140405610.png";
+
+function MobileStickyOrder() {
+  const [show, setShow] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setShow(window.scrollY > window.innerHeight * 0.8);
+    };
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    handleScroll();
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  if (!show) return null;
+
+  return (
+    <div className="sm:hidden fixed bottom-0 left-0 w-full z-50 p-4 bg-background/90 backdrop-blur-md border-t border-white/10">
+      <OrderDialog>
+        <button data-testid="button-order-mobile" className="w-full bg-primary text-primary-foreground font-bold py-4 rounded-none shadow-[0_0_20px_rgba(198,156,109,0.3)] uppercase tracking-widest text-sm border border-primary">
+          Order Now
+        </button>
+      </OrderDialog>
+    </div>
+  );
+}
 
 export default function Home() {
   return (
@@ -19,14 +45,8 @@ export default function Home() {
       <MenuSection />
       <Contact />
       
-      {/* Sticky Mobile Order Bar */}
-      <div className="sm:hidden fixed bottom-0 left-0 w-full z-50 p-4 bg-background/90 backdrop-blur-md border-t border-white/10">
-        <OrderDialog>
-          <button data-testid="button-order-mobile" className="w-full bg-primary text-primary-foreground font-bold py-4 rounded-none shadow-[0_0_20px_rgba(198,156,109,0.3)] uppercase tracking-widest text-sm border border-primary">
-            Order Now
-          </button>
-        </OrderDialog>
-      </div>
+      {/* Sticky Mobile Order Bar — hidden on hero, shows after scrolling past it */}
+      <MobileStickyOrder />
 
       {/* Footer */}
       <footer className="py-16 border-t border-white/5 pb-28 sm:pb-16">
