@@ -55,11 +55,18 @@ export function Contact() {
             </div>
 
             <div className="mt-16 flex flex-col sm:flex-row gap-6">
-              <Button className="h-14 px-8 rounded-none bg-[#25D366] hover:bg-[#20bd5a] text-white flex items-center gap-3 shadow-[0_0_20px_rgba(37,211,102,0.2)] uppercase tracking-widest text-xs transition-all">
+              <Button 
+                className="h-14 px-8 rounded-none bg-[#25D366] hover:bg-[#20bd5a] text-white flex items-center gap-3 shadow-[0_0_20px_rgba(37,211,102,0.2)] uppercase tracking-widest text-xs transition-all"
+                onClick={() => window.open("https://wa.me/918669667566?text=Hi,%20I'd%20like%20to%20place%20an%20order", "_blank")}
+              >
                 <MessageCircle className="w-5 h-5" />
                 WhatsApp Order
               </Button>
-              <Button variant="outline" className="h-14 px-8 rounded-none border-primary text-primary hover:bg-primary/10 flex items-center gap-3 uppercase tracking-widest text-xs transition-all">
+              <Button 
+                variant="outline" 
+                className="h-14 px-8 rounded-none border-primary text-primary hover:bg-primary/10 flex items-center gap-3 uppercase tracking-widest text-xs transition-all"
+                onClick={() => window.open("https://maps.google.com/maps?q=Kebabil,%20Rosa%20Manhattan,%20Hiranandani%20Estate,%20Thane", "_blank")}
+              >
                 <Navigation className="w-4 h-4" />
                 Get Directions
               </Button>

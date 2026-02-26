@@ -1,10 +1,14 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
+import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetHeader } from "@/components/ui/sheet";
+import { Menu } from "lucide-react";
 import { motion } from "framer-motion";
 import logoImg from "@assets/1000037956-removebg-preview_1772137922663.png";
+import { OrderDialog } from "./OrderDialog";
 
 export function Navbar() {
   const [scrolled, setScrolled] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -15,8 +19,11 @@ export function Navbar() {
   }, []);
 
   const scrollTo = (id: string) => {
+    setIsOpen(false);
     const el = document.getElementById(id);
-    if (el) el.scrollIntoView({ behavior: "smooth" });
+    if (el) {
+      setTimeout(() => el.scrollIntoView({ behavior: "smooth" }), 100);
+    }
   };
 
   return (
@@ -43,18 +50,31 @@ export function Navbar() {
         </div>
 
         <div className="flex items-center gap-4">
-          <Button className="hidden sm:flex rounded-none bg-primary hover:bg-primary/90 text-primary-foreground font-medium px-8 h-10 uppercase tracking-widest text-xs border border-primary transition-all duration-300 hover:shadow-[0_0_15px_rgba(198,156,109,0.4)]">
-            Order Now
-          </Button>
+          <OrderDialog>
+            <Button className="hidden sm:flex rounded-none bg-primary hover:bg-primary/90 text-primary-foreground font-medium px-8 h-10 uppercase tracking-widest text-xs border border-primary transition-all duration-300 hover:shadow-[0_0_15px_rgba(198,156,109,0.4)]">
+              Order Now
+            </Button>
+          </OrderDialog>
           
           {/* Mobile Menu Toggle */}
-          <button className="md:hidden text-white p-2">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="3" y1="12" x2="21" y2="12"></line>
-              <line x1="3" y1="6" x2="21" y2="6"></line>
-              <line x1="3" y1="18" x2="21" y2="18"></line>
-            </svg>
-          </button>
+          <Sheet open={isOpen} onOpenChange={setIsOpen}>
+            <SheetTrigger asChild>
+              <button className="md:hidden text-white p-2">
+                <Menu className="w-7 h-7" />
+              </button>
+            </SheetTrigger>
+            <SheetContent side="right" className="bg-background border-l border-white/10 w-[300px] flex flex-col pt-16 px-8">
+              <SheetHeader className="hidden">
+                 <SheetTitle>Menu</SheetTitle>
+              </SheetHeader>
+              <div className="flex flex-col gap-8 mt-10">
+                <button onClick={() => scrollTo("about")} className="text-left text-sm uppercase tracking-widest text-white hover:text-primary transition-colors">About</button>
+                <button onClick={() => scrollTo("signature")} className="text-left text-sm uppercase tracking-widest text-white hover:text-primary transition-colors">Signatures</button>
+                <button onClick={() => scrollTo("menu")} className="text-left text-sm uppercase tracking-widest text-white hover:text-primary transition-colors">Menu</button>
+                <button onClick={() => scrollTo("contact")} className="text-left text-sm uppercase tracking-widest text-white hover:text-primary transition-colors">Contact</button>
+              </div>
+            </SheetContent>
+          </Sheet>
         </div>
       </div>
     </motion.nav>

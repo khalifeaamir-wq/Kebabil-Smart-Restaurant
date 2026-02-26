@@ -1,8 +1,13 @@
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import logoImg from "@assets/1000037956-removebg-preview_1772137922663.png";
+import { OrderDialog } from "./OrderDialog";
 
 export function Hero() {
+  const scrollToMenu = () => {
+    document.getElementById("menu")?.scrollIntoView({ behavior: "smooth" });
+  };
+
   return (
     <section className="relative h-screen w-full flex items-center justify-center overflow-hidden bg-background">
       {/* Background Image with Parallax & Overlay */}
@@ -52,12 +57,19 @@ export function Hero() {
           transition={{ duration: 1, delay: 0.7, ease: "easeOut" }}
           className="flex flex-col sm:flex-row gap-6 w-full sm:w-auto"
         >
-          <Button size="lg" className="bg-primary text-primary-foreground hover:bg-primary/90 font-medium tracking-widest uppercase h-14 px-12 rounded-none shadow-[0_0_20px_rgba(198,156,109,0.3)] transition-all duration-500 hover:shadow-[0_0_40px_rgba(198,156,109,0.6)] border border-primary">
+          <Button 
+            size="lg" 
+            onClick={scrollToMenu}
+            className="bg-primary text-primary-foreground hover:bg-primary/90 font-medium tracking-widest uppercase h-14 px-12 rounded-none shadow-[0_0_20px_rgba(198,156,109,0.3)] transition-all duration-500 hover:shadow-[0_0_40px_rgba(198,156,109,0.6)] border border-primary"
+          >
             Explore Menu
           </Button>
-          <Button size="lg" variant="outline" className="h-14 px-12 rounded-none border-white/30 text-white hover:bg-white/10 glass-panel uppercase tracking-widest transition-all duration-500">
-            Order Now
-          </Button>
+          
+          <OrderDialog>
+            <Button size="lg" variant="outline" className="h-14 px-12 rounded-none border-white/30 text-white hover:bg-white/10 glass-panel uppercase tracking-widest transition-all duration-500">
+              Order Now
+            </Button>
+          </OrderDialog>
         </motion.div>
 
       </div>
