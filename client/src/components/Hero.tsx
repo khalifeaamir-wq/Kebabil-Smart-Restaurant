@@ -43,7 +43,7 @@ export function Hero() {
         <img 
           src="/images/hero-night.jpg" 
           alt="Kebabil Restaurant" 
-          className="w-full h-full object-cover"
+          className="w-full h-full object-cover object-[center_30%] md:object-center"
           style={{
             imageRendering: "auto",
             filter: "contrast(1.08) saturate(1.15) brightness(1.05)",
