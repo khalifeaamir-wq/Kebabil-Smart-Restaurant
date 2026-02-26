@@ -1,0 +1,152 @@
+You are a Senior Frontend Engineer specializing in premium restaurant websites.
+Your task is to integrate a luxury scroll-parallax hero section into my existing web app.
+
+CONTEXT
+This is for “Kebabil” — a modern Middle Eastern grill restaurant with sculptural interiors, warm ambient lighting, sand-textured circular wall reliefs, and elegant glass façade architecture.
+
+I have two hero images:
+1) Interior day architectural shot
+2) Night ambience façade shot
+
+These must be layered into a cinematic scroll-parallax hero (NO food visuals).
+
+STACK ASSUMPTION
+The app is already running on:
+- React / Next.js (or similar SPA)
+- TailwindCSS
+- Existing routing and layout already set
+
+You must NOT rebuild the whole page.
+You must create a reusable component:
+`<KebabilHero />`
+that plugs into my landing page.
+
+---------------------------------------------------
+🎯 OBJECTIVE
+Create a premium layered hero with depth, motion, and luxury ambience using the 2 provided images.
+
+This hero should feel:
+• High-end
+• Warm ambient glow
+• Architectural depth
+• Smooth cinematic scroll motion
+• Minimal, elegant, modern Arabic luxury
+---------------------------------------------------
+
+📁 IMAGE ASSETS
+Assume images are located at:
+`/public/kebabil/hero-day.jpg`
+`/public/kebabil/hero-night.jpg`
+
+---------------------------------------------------
+
+🧱 LAYER ARCHITECTURE (CRITICAL)
+
+Layer 1 (Background Base)
+- Use the DAY interior image
+- Full-width cover
+- Subtle scale 1.05 → 1.12 on scroll
+- TranslateY: 0 → +80px
+
+Layer 2 (Atmosphere Overlay)
+- Use NIGHT façade image
+- Positioned above base with opacity 0.5
+- Apply soft blur + warm amber tint
+- TranslateY: 0 → +140px on scroll
+- Opacity fades 0.5 → 0.2
+
+Layer 3 (Warm Gradient Overlay)
+- Add cinematic gradient:
+  top: transparent
+  middle: soft amber haze
+  bottom: deeper warm gold glow
+- Blend mode: overlay or multiply
+
+Layer 4 (Content Overlay UI)
+- Restaurant name: “Kebabil”
+- Tagline: “Grilling Happiness”
+- CTA buttons:
+   • View Menu
+   • Reserve Table
+- Subtle glassmorphism card behind text
+- Center-left alignment on desktop
+- Centered on mobile
+
+---------------------------------------------------
+
+🎬 SCROLL PARALLAX BEHAVIOR
+
+From 0px → 600px scroll:
+- Background moves slower (depth illusion)
+- Overlay moves faster
+- Text slightly fades + lifts
+
+Use:
+- Framer Motion (preferred)
+OR
+- window scroll + transform translateY
+
+DO NOT use heavy libraries.
+Keep animations GPU-accelerated only (transform + opacity).
+
+---------------------------------------------------
+
+📱 RESPONSIVE RULES
+
+Desktop:
+- Full viewport height hero (min-h-screen)
+- Text left aligned
+- Strong parallax depth
+
+Mobile:
+- Reduce motion intensity by 40%
+- Center text
+- Maintain readability (increase gradient strength)
+
+---------------------------------------------------
+
+🎨 VISUAL POLISH (IMPORTANT)
+
+Add:
+• Soft glow around text
+• Subtle vignette edges
+• Light film grain texture (very faint)
+• Smooth easing (easeOut cubic)
+
+NO:
+- No loud colors
+- No neon
+- No clutter
+- No food imagery
+- No heavy UI
+
+This must feel:
+“Dubai luxury restaurant cinematic website”
+
+---------------------------------------------------
+
+⚙️ PERFORMANCE RULES
+
+- Use next/image or optimized <img> loading
+- Preload the DAY hero image (priority)
+- Lazy-load the NIGHT overlay image
+- Use will-change: transform
+- Avoid layout thrashing
+
+---------------------------------------------------
+
+📦 OUTPUT REQUIRED
+
+1️⃣ Create component:
+`components/KebabilHero.tsx`
+
+2️⃣ Provide usage snippet:
+How to import and use inside existing landing page.
+
+3️⃣ Tailwind-compatible styles only
+(no external CSS files)
+
+4️⃣ Code must be clean, production-ready, and minimal.
+
+Return only the final code implementation.
+No explanation.
