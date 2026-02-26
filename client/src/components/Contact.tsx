@@ -27,7 +27,7 @@ export function Contact() {
                 </div>
                 <div className="pt-1">
                   <h4 className="text-white font-medium mb-1 tracking-wider uppercase text-sm">Reservations & Delivery</h4>
-                  <p className="text-foreground/70 font-light">+91 86696 67566</p>
+                  <p className="text-foreground/70 font-light">+91 96999 66770</p>
                 </div>
               </div>
 
@@ -57,7 +57,7 @@ export function Contact() {
             <div className="mt-16 flex flex-col sm:flex-row gap-6">
               <Button 
                 className="h-14 px-8 rounded-none bg-[#25D366] hover:bg-[#20bd5a] text-white flex items-center gap-3 shadow-[0_0_20px_rgba(37,211,102,0.2)] uppercase tracking-widest text-xs transition-all"
-                onClick={() => window.open("https://wa.me/918669667566?text=Hi,%20I'd%20like%20to%20place%20an%20order", "_blank")}
+                onClick={() => window.open("https://wa.me/919699966770?text=Hi,%20I'd%20like%20to%20place%20an%20order", "_blank")}
               >
                 <MessageCircle className="w-5 h-5" />
                 WhatsApp Order
