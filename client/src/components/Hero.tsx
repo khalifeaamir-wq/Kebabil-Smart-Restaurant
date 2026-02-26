@@ -1,8 +1,7 @@
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import logoImg from "@assets/1000037956-removebg-preview_1772137922663.png";
+import logoImg from "@assets/468146293_3917545001849558_7757020803682063832_n-removebg-prev_1772140405610.png";
 import { OrderDialog } from "./OrderDialog";
-import { TransparentLogo } from "./TransparentLogo";
 
 export function Hero() {
   const scrollToMenu = () => {
@@ -27,7 +26,7 @@ export function Hero() {
           transition={{ duration: 1, delay: 0.2, ease: "easeOut" }}
           className="mb-8"
         >
-          <TransparentLogo 
+          <img 
             src={logoImg} 
             alt="Kebabil Logo" 
             className="w-56 md:w-80 h-auto object-contain drop-shadow-[0_0_40px_rgba(198,156,109,0.5)]"
