@@ -1,7 +1,6 @@
 import { useRef, useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import logoImg from "@assets/468146293_3917545001849558_7757020803682063832_n-removebg-prev_1772140405610.png";
 import { OrderDialog } from "./OrderDialog";
 
 export function Hero() {
@@ -98,19 +97,6 @@ export function Hero() {
         }}
       >
         
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 1, delay: 0.2, ease: "easeOut" }}
-          className="mb-8"
-        >
-          <img 
-            src={logoImg} 
-            alt="Kebabil Logo" 
-            className="w-56 md:w-80 h-auto object-contain drop-shadow-[0_0_60px_rgba(198,156,109,0.6)]"
-          />
-        </motion.div>
-
         <motion.p 
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
