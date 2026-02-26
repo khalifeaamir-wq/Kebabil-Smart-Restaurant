@@ -32,7 +32,7 @@ export function Hero() {
   return (
     <section ref={sectionRef} className="relative h-screen w-full flex items-center justify-center overflow-hidden bg-black">
       
-      {/* Single Hero Image with Parallax */}
+      {/* Hero Image — Ultra HD Enhanced */}
       <div 
         className="absolute inset-0 w-full h-full z-0"
         style={{
@@ -44,27 +44,32 @@ export function Hero() {
           src="/images/hero-night.jpg" 
           alt="Kebabil Restaurant" 
           className="w-full h-full object-cover"
+          style={{
+            imageRendering: "auto",
+            filter: "contrast(1.08) saturate(1.15) brightness(1.05)",
+          }}
           loading="eager"
           fetchPriority="high"
+          decoding="async"
         />
       </div>
 
-      {/* Cinematic Gradient Overlay */}
+      {/* Cinematic Gradient */}
       <div className="absolute inset-0 z-10 pointer-events-none"
         style={{
-          background: "linear-gradient(to bottom, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0.1) 40%, rgba(28,28,28,0.6) 75%, rgba(28,28,28,0.95) 100%)",
+          background: "linear-gradient(to bottom, rgba(0,0,0,0.25) 0%, rgba(0,0,0,0.05) 35%, rgba(28,28,28,0.5) 70%, rgba(28,28,28,0.95) 100%)",
         }}
       />
       
       {/* Vignette */}
       <div className="absolute inset-0 z-10 pointer-events-none"
         style={{
-          background: "radial-gradient(ellipse at center, transparent 50%, rgba(0,0,0,0.5) 100%)",
+          background: "radial-gradient(ellipse at center, transparent 50%, rgba(0,0,0,0.45) 100%)",
         }}
       />
 
       {/* Film Grain */}
-      <div className="absolute inset-0 z-10 pointer-events-none opacity-[0.04] noise-bg" />
+      <div className="absolute inset-0 z-10 pointer-events-none opacity-[0.03] noise-bg" />
 
       {/* Content */}
       <div 

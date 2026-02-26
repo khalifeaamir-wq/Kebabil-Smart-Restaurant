@@ -5,7 +5,7 @@ export function About() {
     <section className="py-32 px-4 md:px-8 max-w-7xl mx-auto w-full" id="about">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-20 items-center">
         
-        {/* Left: Image Collage */}
+        {/* Left: Interior Image */}
         <div className="relative h-[600px] md:h-[700px] w-full group">
           <motion.div 
             initial={{ opacity: 0, scale: 0.95 }}
@@ -15,25 +15,13 @@ export function About() {
             className="absolute inset-0 overflow-hidden shadow-2xl border border-white/5"
           >
             <img 
-              src="/images/about-feast.png" 
-              alt="Middle Eastern Feast" 
-              className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105 grayscale-[0.2] group-hover:grayscale-0"
+              src="/images/hero-day.jpg" 
+              alt="Kebabil Interior — Sculptural Design" 
+              className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105 grayscale-[0.15] group-hover:grayscale-0"
+              style={{ filter: "contrast(1.05) saturate(1.1)" }}
+              loading="lazy"
             />
-            <div className="absolute inset-0 bg-gradient-to-tr from-background/80 to-transparent" />
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, x: -30, y: 30 }}
-            whileInView={{ opacity: 1, x: 0, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 1, delay: 0.3 }}
-            className="absolute -bottom-10 -right-10 w-48 h-48 md:w-64 md:h-64 overflow-hidden border-[12px] border-background hidden md:block z-10 shadow-2xl"
-          >
-            <img 
-              src="/images/kebab.png" 
-              alt="Fresh Kebab" 
-              className="w-full h-full object-cover"
-            />
+            <div className="absolute inset-0 bg-gradient-to-tr from-background/70 via-background/20 to-transparent" />
           </motion.div>
         </div>
 
