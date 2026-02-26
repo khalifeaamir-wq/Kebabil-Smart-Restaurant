@@ -27,7 +27,7 @@ export function Contact() {
                 </div>
                 <div className="pt-1">
                   <h4 className="text-white font-medium mb-1 tracking-wider uppercase text-sm">Reservations & Delivery</h4>
-                  <p className="text-foreground/70 font-light">+91 96999 66770</p>
+                  <p className="text-foreground/70 font-light">+91 86696 67566</p>
                 </div>
               </div>
 

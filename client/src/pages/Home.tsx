@@ -75,7 +75,7 @@ export default function Home() {
                 <p>Rosa Manhattan, Hiranandani Estate</p>
                 <p>Thane West, Maharashtra 400607</p>
                 <p className="mt-3">
-                  <a href="tel:+919699966770" className="hover:text-primary transition-colors">+91 96999 66770</a>
+                  <a href="tel:+918669667566" className="hover:text-primary transition-colors">+91 86696 67566</a>
                 </p>
               </div>
             </div>
