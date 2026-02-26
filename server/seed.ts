@@ -1,0 +1,76 @@
+import { db } from "./storage";
+import { menuCategories, menuItems } from "@shared/schema";
+import { sql } from "drizzle-orm";
+
+const menuData = [
+  {
+    category: "Signature Kebabs",
+    items: [
+      { name: "Arabic Shawarma", description: "Authentic Middle Eastern spiced chicken, slow-roasted and thinly sliced, wrapped in fresh pita with garlic toum.", price: "₹249", variants: ["Chicken", "Mutton"], addons: ["Extra Cheese", "Extra Toum"], badge: "MUST TRY" },
+      { name: "Angara Shawarma", description: "Spicy Indian-fusion shawarma with fiery charcoal-smoked marinade and mint chutney.", price: "₹229", variants: ["Chicken", "Paneer"], addons: ["Extra Spicy", "Cheese"], badge: "HOT" },
+      { name: "Peshawari Kebab", description: "Tender morsels of meat marinated in rich cream, cashew paste, and mild Peshawari spices, grilled to perfection.", price: "₹349", variants: ["Chicken", "Mutton"], addons: [], badge: "MUST TRY" },
+      { name: "Changezi Kebab", description: "Bold, rustic flavors from the streets of Old Delhi, marinated in yogurt and fiery red chilies.", price: "₹329", variants: ["Chicken"], addons: [], badge: "" },
+    ],
+  },
+  {
+    category: "Seekh Kebabs",
+    items: [
+      { name: "Mutton Seekh Kebab", description: "Minced mutton blended with aromatic spices, fresh coriander, and green chilies, skewered and char-grilled.", price: "₹399", variants: ["Mutton"], addons: ["Roomali Roti"], badge: "MUST TRY" },
+      { name: "Chicken Seekh Kebab", description: "Succulent minced chicken skewers with a delicate blend of cumin, ginger, and garlic.", price: "₹349", variants: ["Chicken"], addons: ["Roomali Roti"], badge: "" },
+    ],
+  },
+  {
+    category: "Tandoori (Half)",
+    items: [
+      { name: "Tandoori Chicken", description: "The classic. Half chicken marinated in yogurt, Kashmiri chili, and secret spices, roasted in the tandoor.", price: "₹399", variants: ["Chicken"], addons: [], badge: "MUST TRY" },
+      { name: "Afghani Chicken", description: "Creamy, mildly spiced half chicken roasted over charcoal, infused with cardamom and fenugreek.", price: "₹429", variants: ["Chicken"], addons: [], badge: "" },
+    ],
+  },
+  {
+    category: "Gravy & Rice",
+    items: [
+      { name: "Butter Chicken", description: "Char-grilled chicken tikka simmered in a rich, velvety tomato and butter gravy.", price: "₹449", variants: ["Chicken", "Paneer"], addons: ["Garlic Naan"], badge: "MUST TRY" },
+      { name: "Yemeni Mandi", description: "Aromatic long-grain basmati rice slow-cooked with proprietary Middle Eastern spices and tender slow-roasted meat.", price: "₹599", variants: ["Chicken", "Mutton"], addons: ["Extra Rice", "Spicy Salsa"], badge: "MUST TRY" },
+    ],
+  },
+  {
+    category: "Breads",
+    items: [
+      { name: "Roomali Roti", description: "Paper-thin soft bread, perfect for wrapping and dipping.", price: "₹40", variants: [], addons: [], badge: "" },
+      { name: "Garlic Naan", description: "Tandoor-baked flatbread brushed with butter and minced garlic.", price: "₹70", variants: [], addons: [], badge: "" },
+    ],
+  },
+];
+
+async function seed() {
+  console.log("Seeding menu data...");
+
+  const existingCategories = await db.select().from(menuCategories);
+  if (existingCategories.length > 0) {
+    console.log("Menu data already exists, skipping seed.");
+    return;
+  }
+
+  for (let i = 0; i < menuData.length; i++) {
+    const catData = menuData[i];
+    const [cat] = await db.insert(menuCategories).values({ name: catData.category, sortOrder: i }).returning();
+
+    for (let j = 0; j < catData.items.length; j++) {
+      const item = catData.items[j];
+      await db.insert(menuItems).values({
+        categoryId: cat.id,
+        name: item.name,
+        description: item.description,
+        price: item.price,
+        variants: item.variants,
+        addons: item.addons,
+        badge: item.badge,
+        sortOrder: j,
+      });
+    }
+  }
+
+  console.log("Menu seeded successfully!");
+}
+
+seed().then(() => process.exit(0)).catch(e => { console.error(e); process.exit(1); });
