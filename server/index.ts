@@ -60,6 +60,8 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  const { setupWebSocket } = await import("./websocket");
+  setupWebSocket(httpServer);
   const { seedIfEmpty } = await import("./seed");
   await seedIfEmpty();
   await registerRoutes(httpServer, app);
