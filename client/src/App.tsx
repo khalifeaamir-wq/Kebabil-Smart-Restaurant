@@ -10,6 +10,7 @@ import Kitchen from "@/pages/Kitchen";
 import Waiter from "@/pages/Waiter";
 import Analytics from "@/pages/Analytics";
 import DoorScanner from "@/pages/DoorScanner";
+import TableQRCodes from "@/pages/TableQRCodes";
 import AdminLogin from "@/pages/AdminLogin";
 import { useAuth } from "@/lib/useAuth";
 
@@ -61,6 +62,7 @@ function Router() {
       <Route path="/waiter">{() => <AdminRoute component={Waiter} />}</Route>
       <Route path="/analytics">{() => <AdminRoute component={Analytics} />}</Route>
       <Route path="/door">{() => <AdminRoute component={DoorScanner} />}</Route>
+      <Route path="/qr-codes">{() => <AdminRoute component={TableQRCodes} />}</Route>
       <Route component={NotFound} />
     </Switch>
   );

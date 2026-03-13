@@ -28,6 +28,7 @@ Premium restaurant website for Kebabil — a Middle Eastern & Indian fusion keba
 - `/waiter` — Waiter dashboard (table overview, ready-to-serve alerts, table clearing)
 - `/analytics` — Analytics dashboard (revenue, orders, top items, hourly trends, door access)
 - `/door` — Door scanner (verify exit QR tokens at the door)
+- `/qr-codes` — Printable QR codes for all tables (admin-protected, print-ready layout)
 - `/admin` — Admin login portal (redirects to kitchen after login)
 
 ## Authentication
