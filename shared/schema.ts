@@ -101,6 +101,19 @@ export const doorAccessLogs = pgTable("door_access_logs", {
   reason: text("reason").notNull().default(""),
 });
 
+export const adminUsers = pgTable("admin_users", {
+  id: serial("id").primaryKey(),
+  username: text("username").notNull().unique(),
+  passwordHash: text("password_hash").notNull(),
+  displayName: text("display_name").notNull(),
+  role: text("role").notNull().default("staff"),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  lastLoginAt: timestamp("last_login_at"),
+});
+
+export const insertAdminUserSchema = createInsertSchema(adminUsers).omit({ id: true, createdAt: true, lastLoginAt: true });
+
 export const insertMenuCategorySchema = createInsertSchema(menuCategories).omit({ id: true });
 export const insertMenuItemSchema = createInsertSchema(menuItems).omit({ id: true });
 export const insertTableSchema = createInsertSchema(restaurantTables).omit({ id: true });
@@ -129,3 +142,5 @@ export type ExitToken = typeof exitTokens.$inferSelect;
 export type InsertExitToken = z.infer<typeof insertExitTokenSchema>;
 export type DoorAccessLog = typeof doorAccessLogs.$inferSelect;
 export type InsertDoorAccessLog = z.infer<typeof insertDoorAccessLogSchema>;
+export type AdminUser = typeof adminUsers.$inferSelect;
+export type InsertAdminUser = z.infer<typeof insertAdminUserSchema>;

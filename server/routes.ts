@@ -1,9 +1,20 @@
-import type { Express } from "express";
+import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { insertMenuItemSchema, insertMenuCategorySchema } from "@shared/schema";
 import { broadcast } from "./websocket";
 import crypto from "crypto";
+
+function hashPassword(password: string): string {
+  return crypto.createHash("sha256").update(password).digest("hex");
+}
+
+function requireAdmin(req: Request, res: Response, next: NextFunction) {
+  if (!req.session?.adminId) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+  next();
+}
 
 function generateSessionCode(): string {
   return crypto.randomBytes(6).toString("hex");
@@ -19,6 +30,82 @@ export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
+
+  // ===== AUTH ROUTES =====
+  app.post("/api/auth/setup", async (req, res) => {
+    try {
+      const count = await storage.getAdminCount();
+      if (count > 0) {
+        return res.status(403).json({ message: "Admin already exists. Use login." });
+      }
+      const { username, password, displayName } = req.body;
+      if (!username || !password || !displayName) {
+        return res.status(400).json({ message: "Username, password, and display name required" });
+      }
+      const user = await storage.createAdminUser({
+        username,
+        passwordHash: hashPassword(password),
+        displayName,
+        role: "owner",
+        isActive: true,
+      });
+      req.session.adminId = user.id;
+      req.session.adminUsername = user.username;
+      req.session.adminRole = user.role;
+      res.json({ id: user.id, username: user.username, displayName: user.displayName, role: user.role });
+    } catch (error) {
+      console.error("Setup error:", error);
+      res.status(500).json({ message: "Setup failed" });
+    }
+  });
+
+  app.post("/api/auth/login", async (req, res) => {
+    try {
+      const { username, password } = req.body;
+      if (!username || !password) {
+        return res.status(400).json({ message: "Username and password required" });
+      }
+      const user = await storage.getAdminByUsername(username);
+      if (!user || !user.isActive || user.passwordHash !== hashPassword(password)) {
+        return res.status(401).json({ message: "Invalid credentials" });
+      }
+      await storage.updateAdminLastLogin(user.id);
+      req.session.adminId = user.id;
+      req.session.adminUsername = user.username;
+      req.session.adminRole = user.role;
+      res.json({ id: user.id, username: user.username, displayName: user.displayName, role: user.role });
+    } catch (error) {
+      console.error("Login error:", error);
+      res.status(500).json({ message: "Login failed" });
+    }
+  });
+
+  app.post("/api/auth/logout", (req, res) => {
+    req.session.destroy((err) => {
+      if (err) return res.status(500).json({ message: "Logout failed" });
+      res.clearCookie("connect.sid");
+      res.json({ message: "Logged out" });
+    });
+  });
+
+  app.get("/api/auth/me", async (req, res) => {
+    if (!req.session?.adminId) {
+      return res.json({ authenticated: false });
+    }
+    const user = await storage.getAdminById(req.session.adminId);
+    if (!user || !user.isActive) {
+      return res.json({ authenticated: false });
+    }
+    res.json({
+      authenticated: true,
+      user: { id: user.id, username: user.username, displayName: user.displayName, role: user.role },
+    });
+  });
+
+  app.get("/api/auth/needs-setup", async (_req, res) => {
+    const count = await storage.getAdminCount();
+    res.json({ needsSetup: count === 0 });
+  });
 
   // ===== MENU ROUTES =====
   app.get("/api/menu", async (_req, res) => {
@@ -243,7 +330,7 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/orders/active", async (_req, res) => {
+  app.get("/api/orders/active", requireAdmin, async (_req, res) => {
     try {
       const activeOrders = await storage.getActiveOrders();
       const ordersWithItems = await Promise.all(
@@ -274,7 +361,7 @@ export async function registerRoutes(
     }
   });
 
-  app.patch("/api/orders/:id/status", async (req, res) => {
+  app.patch("/api/orders/:id/status", requireAdmin, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       const { status } = req.body;
@@ -438,7 +525,7 @@ export async function registerRoutes(
   });
 
   // ===== WAITER DASHBOARD DATA =====
-  app.get("/api/waiter/tables", async (_req, res) => {
+  app.get("/api/waiter/tables", requireAdmin, async (_req, res) => {
     try {
       const tables = await storage.getTables();
       const tablesWithDetails = await Promise.all(
@@ -466,7 +553,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/waiter/table/:tableId/clear", async (req, res) => {
+  app.post("/api/waiter/table/:tableId/clear", requireAdmin, async (req, res) => {
     try {
       const tableId = parseInt(req.params.tableId);
       const table = await storage.getTables().then(t => t.find(tb => tb.id === tableId));
@@ -485,7 +572,7 @@ export async function registerRoutes(
   });
 
   // ===== ANALYTICS ROUTES =====
-  app.get("/api/analytics/overview", async (_req, res) => {
+  app.get("/api/analytics/overview", requireAdmin, async (_req, res) => {
     try {
       const allOrders = await storage.getAllOrders();
       const allSessions = await storage.getAllSessions();
@@ -581,7 +668,7 @@ export async function registerRoutes(
   });
 
   // ===== DOOR ACCESS LOGS =====
-  app.get("/api/door/logs", async (_req, res) => {
+  app.get("/api/door/logs", requireAdmin, async (_req, res) => {
     try {
       const logs = await storage.getDoorAccessLogs();
       res.json(logs);

@@ -8,9 +8,10 @@ import {
   type Payment, type InsertPayment,
   type ExitToken, type InsertExitToken,
   type DoorAccessLog, type InsertDoorAccessLog,
+  type AdminUser, type InsertAdminUser,
   menuCategories, menuItems,
   restaurantTables, diningSessions, orders, orderItems,
-  payments, exitTokens, doorAccessLogs,
+  payments, exitTokens, doorAccessLogs, adminUsers,
 } from "@shared/schema";
 import { eq, asc, desc, and, inArray, lt } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
@@ -171,6 +172,33 @@ export class DatabaseStorage {
   }
   async getAllOrderItems(): Promise<OrderItem[]> {
     return db.select().from(orderItems);
+  }
+
+  async getAdminByUsername(username: string): Promise<AdminUser | undefined> {
+    const [user] = await db.select().from(adminUsers).where(eq(adminUsers.username, username));
+    return user;
+  }
+  async getAdminById(id: number): Promise<AdminUser | undefined> {
+    const [user] = await db.select().from(adminUsers).where(eq(adminUsers.id, id));
+    return user;
+  }
+  async createAdminUser(data: InsertAdminUser): Promise<AdminUser> {
+    const [user] = await db.insert(adminUsers).values(data).returning();
+    return user;
+  }
+  async updateAdminUser(id: number, data: Partial<InsertAdminUser>): Promise<AdminUser | undefined> {
+    const [user] = await db.update(adminUsers).set(data).where(eq(adminUsers.id, id)).returning();
+    return user;
+  }
+  async updateAdminLastLogin(id: number): Promise<void> {
+    await db.update(adminUsers).set({ lastLoginAt: new Date() }).where(eq(adminUsers.id, id));
+  }
+  async getAdminUsers(): Promise<AdminUser[]> {
+    return db.select().from(adminUsers).orderBy(asc(adminUsers.username));
+  }
+  async getAdminCount(): Promise<number> {
+    const result = await db.select().from(adminUsers);
+    return result.length;
   }
 }
 

@@ -28,8 +28,23 @@ Premium restaurant website for Kebabil — a Middle Eastern & Indian fusion keba
 - `/waiter` — Waiter dashboard (table overview, ready-to-serve alerts, table clearing)
 - `/analytics` — Analytics dashboard (revenue, orders, top items, hourly trends, door access)
 - `/door` — Door scanner (verify exit QR tokens at the door)
+- `/admin` — Admin login portal (redirects to kitchen after login)
+
+## Authentication
+- Staff pages (kitchen, waiter, analytics, door) require admin login
+- First visit to any staff page shows setup form to create the owner account
+- Session-based auth with PostgreSQL session store (24h cookie)
+- Roles: `owner`, `staff`
+- Admin credentials stored with SHA-256 hashed passwords
+- DB table: `admin_users` — id, username, password_hash, display_name, role, is_active, created_at, last_login_at
 
 ## API Routes
+### Auth
+- `GET /api/auth/needs-setup` — Check if first admin needs to be created
+- `POST /api/auth/setup` — Create first admin account (only works when no admins exist)
+- `POST /api/auth/login` — Login with username/password
+- `POST /api/auth/logout` — Destroy session
+- `GET /api/auth/me` — Check current auth status
 ### Menu
 - `GET /api/menu` — Returns all menu categories with items
 - `POST /api/menu/categories` — Create category
