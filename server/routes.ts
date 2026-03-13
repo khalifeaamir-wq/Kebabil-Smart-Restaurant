@@ -483,8 +483,13 @@ export async function registerRoutes(
 
   app.post("/api/exit-token/verify", async (req, res) => {
     try {
-      const { tokenHash } = req.body;
-      const token = await storage.getExitTokenByHash(tokenHash);
+      const { token: tokenValue, tokenHash: tokenHashValue } = req.body;
+      const lookupHash = tokenValue || tokenHashValue;
+      if (!lookupHash) {
+        res.status(400).json({ valid: false, reason: "Token required" });
+        return;
+      }
+      const token = await storage.getExitTokenByHash(lookupHash);
 
       if (!token) {
         await storage.createDoorAccessLog({ exitTokenId: 0, result: "failed", reason: "Token not found" });
@@ -518,7 +523,12 @@ export async function registerRoutes(
 
       broadcast("exit_verified", { sessionId: token.sessionId, tokenId: token.id });
 
-      res.json({ valid: true, message: "Exit authorized. Door unlocked." });
+      res.json({
+        valid: true,
+        message: "Exit authorized. Door unlocked.",
+        sessionId: token.sessionId,
+        tableNumber: session?.tableId || null,
+      });
     } catch (error) {
       res.status(500).json({ message: "Failed to verify exit token" });
     }
