@@ -1,0 +1,750 @@
+*Your Optimized Prompt:*
+
+You are a **Senior Full-Stack Restaurant Automation Engineer, Product Architect, and Smart Hardware Systems Designer**. Build a **production-ready smart restaurant system** called:
+
+# **Smart Restaurant QR-Based Ordering & Automated Exit System**
+
+The solution must be modern, scalable, mobile-first, operationally realistic, and polished enough to be used as a **final year project with real commercial potential**.
+
+The system should eliminate traditional bottlenecks in restaurant operations by combining:
+
+* QR-based table ordering
+* Live kitchen workflow management
+* Digital payment
+* Temporary exit authorization QR
+* Smart door unlock validation
+* Analytics and restaurant operations dashboard
+
+---
+
+# 1. Core Product Vision
+
+Design and build a restaurant platform where the customer can complete the full dining flow from their phone:
+
+1. Scan the QR on the table
+2. View a digital menu linked to that exact table
+3. Add items to cart and place an order
+4. Kitchen receives the order instantly
+5. Staff prepares and serves to the correct table
+6. Customer pays digitally from phone
+7. System generates a short-lived exit QR code
+8. Customer scans at the exit scanner
+9. Smart door unlocks only for validated paid sessions
+
+This system must reduce:
+
+* manual ordering delays
+* billing counter congestion
+* waiter dependency for basic flows
+* unpaid exits
+* table-service confusion
+
+---
+
+# 2. Build Goal
+
+Create a **complete full-stack application** with:
+
+## Customer Side
+
+* Table QR scan experience
+* Digital menu
+* Cart and checkout
+* Order status tracking
+* Payment flow
+* Temporary exit QR code after successful payment
+
+## Restaurant Side
+
+* Kitchen dashboard
+* Waiter / service dashboard
+* Order management
+* Payment tracking
+* Table occupancy monitoring
+* Analytics dashboard
+* Door access verification system
+
+## Hardware / IoT Side
+
+* QR scanner integration at exit
+* Smart door unlock logic
+* Raspberry Pi based validation flow
+* Lock access only for paid valid sessions
+
+---
+
+# 3. Required User Flows
+
+## Flow A — Customer Enters and Scans Table QR
+
+Each table has a permanent unique QR code such as:
+
+`restaurant.com/table/12`
+
+When scanned:
+
+* system identifies the table number automatically
+* opens the customer menu page
+* stores session mapped to the table
+* marks table as occupied if no active dining session exists
+
+## Flow B — Ordering
+
+Customer can:
+
+* browse categories
+* see dish image, name, description, price, spice level, veg/non-veg tag
+* customize quantity
+* add notes for kitchen
+* add items to cart
+* place order
+
+After placing order:
+
+* generate order ID
+* show estimated preparation time
+* push order to kitchen dashboard
+* show live order status on customer side
+
+## Flow C — Kitchen Handling
+
+Kitchen dashboard must show:
+
+* order number
+* table number
+* ordered items
+* quantity
+* special notes
+* timestamp
+* preparation timer
+* current status
+
+Kitchen statuses:
+
+* New
+* Accepted
+* Preparing
+* Ready
+* Served
+
+When status changes:
+
+* customer should see live updates
+* waiter dashboard should receive service notifications when status becomes “Ready”
+
+## Flow D — Payment
+
+Customer should be able to click:
+
+* Pay Now
+  or
+* Scan table QR again and reopen current table session
+
+Bill must show:
+
+* ordered items
+* quantity
+* subtotal
+* taxes
+* grand total
+* payment status
+
+Supported payments:
+
+* UPI
+* Card
+* Wallet
+* Cash toggle for admin/manual completion if needed
+
+After successful digital payment:
+
+* mark order/session as paid
+* close pending payment state
+* generate temporary exit QR
+
+## Flow E — Exit QR
+
+After payment, generate a **secure temporary QR code** with short validity such as 3 minutes.
+
+The QR must not be a plain editable value. It must be:
+
+* signed
+* time-bound
+* single-use if possible
+* linked to a paid session
+
+Example payload logic:
+
+```json
+{
+  "session_id": "abc123",
+  "order_id": 231,
+  "table_id": 12,
+  "paid": true,
+  "issued_at": "timestamp",
+  "expires_at": "timestamp",
+  "token_signature": "secure_hash"
+}
+```
+
+## Flow F — Smart Door Access
+
+At exit:
+
+* QR scanner scans temporary exit QR
+* backend verifies token
+* checks payment status
+* checks expiration time
+* checks whether token already used
+* if valid, triggers smart lock unlock signal
+* log access event in database
+
+If invalid:
+
+* door remains locked
+* show clear failure reason on admin/guard interface
+
+---
+
+# 4. Technical Stack
+
+Use a modern full-stack architecture.
+
+## Frontend
+
+* Next.js or React
+* Tailwind CSS
+* Mobile-first responsive UI
+* Smooth transitions and polished UX
+* Realtime updates using sockets or efficient polling
+
+## Backend
+
+* Node.js + Express or Next.js server actions / API routes
+* Clean modular architecture
+* JWT / signed token logic
+* QR generation and validation service
+
+## Database
+
+Use PostgreSQL preferred.
+Design database properly with relationships.
+
+## Payments
+
+Integrate:
+
+* Razorpay preferred for India-focused version
+* Stripe as optional abstraction layer
+
+## Realtime
+
+Use:
+
+* WebSockets / Socket.IO / Supabase realtime / Pusher
+  for kitchen updates and waiter notifications
+
+## Hardware / IoT
+
+Prototype with:
+
+* Raspberry Pi
+* USB QR scanner or camera scanner
+* relay-controlled electronic smart lock
+* optional local lightweight Python or Node validation bridge
+
+---
+
+# 5. Database Design
+
+Design a proper relational schema with migrations and seed data.
+
+## Tables
+
+Fields:
+
+* id
+* table_number
+* qr_code_url
+* status (available, occupied, reserved, cleaning)
+* active_session_id
+* created_at
+* updated_at
+
+## Menu Categories
+
+Fields:
+
+* id
+* name
+* sort_order
+* is_active
+
+## Menu Items
+
+Fields:
+
+* id
+* category_id
+* name
+* description
+* price
+* image_url
+* type (veg, non_veg, egg)
+* spice_level
+* is_available
+* prep_time_minutes
+* popularity_score
+* created_at
+* updated_at
+
+## Dining Sessions
+
+Fields:
+
+* id
+* table_id
+* session_code
+* session_status (active, payment_pending, paid, exited, expired)
+* customer_device_token
+* opened_at
+* closed_at
+
+## Orders
+
+Fields:
+
+* id
+* session_id
+* table_id
+* order_number
+* status
+* subtotal
+* tax
+* total
+* notes
+* created_at
+* updated_at
+
+## Order Items
+
+Fields:
+
+* id
+* order_id
+* menu_item_id
+* quantity
+* unit_price
+* total_price
+* item_note
+
+## Payments
+
+Fields:
+
+* id
+* order_id
+* payment_provider
+* payment_method
+* amount
+* payment_status
+* transaction_reference
+* paid_at
+
+## Exit Tokens
+
+Fields:
+
+* id
+* session_id
+* order_id
+* token_hash
+* issued_at
+* expires_at
+* is_used
+* used_at
+
+## Door Access Logs
+
+Fields:
+
+* id
+* exit_token_id
+* scan_time
+* result (granted, denied)
+* denial_reason
+* device_id
+
+## Staff Users
+
+Fields:
+
+* id
+* name
+* role (admin, kitchen, waiter, cashier, guard)
+* email
+* password_hash
+* is_active
+
+---
+
+# 6. Admin Panels / Dashboards
+
+## A. Kitchen Dashboard
+
+Must show:
+
+* live incoming orders
+* color-coded urgency
+* prep timers
+* status change buttons
+* item notes
+* table number visibility
+* sound alert on new order
+
+## B. Waiter Dashboard
+
+Must show:
+
+* orders ready to be served
+* table requests
+* table occupancy
+* service status
+* payment status
+
+## C. Admin Dashboard
+
+Must show:
+
+* total revenue today
+* total orders
+* active tables
+* pending payments
+* average order value
+* most ordered dishes
+* peak order times
+* kitchen turnaround time
+* top performing categories
+
+## D. Exit Verification Panel
+
+For security/door device view:
+
+* scan result
+* order/session reference
+* paid/unpaid status
+* token validity
+* unlock status
+* access log entries
+
+---
+
+# 7. UI / UX Requirements
+
+The UI must feel like a **premium modern restaurant-tech product**, not a student template.
+
+## Customer UI
+
+Design should be:
+
+* mobile-first
+* frictionless
+* clean
+* fast
+* visually appetizing
+* easy for all ages
+
+Include:
+
+* beautiful hero/header with table number confirmation
+* category chips
+* sticky cart button
+* fast quantity controls
+* clear bill summary
+* large pay button
+* animated payment success state
+* elegant QR reveal screen after payment
+
+## Restaurant Staff UI
+
+Design should be:
+
+* operational
+* low-friction
+* highly readable
+* status-color driven
+* usable on tablets and desktop monitors
+
+## Motion / Polish
+
+Add:
+
+* smooth page transitions
+* menu item card hover/tap feedback
+* animated order tracker
+* skeleton loaders
+* realtime toasts
+* success/failure micro-interactions
+
+---
+
+# 8. Security Requirements
+
+This is important.
+
+Implement:
+
+* signed QR tokens
+* expiring exit QR
+* no client-side trust for payment validation
+* server-side verification before unlock
+* prevent reuse of exit token
+* payment webhook verification
+* audit logs for access attempts
+* staff authentication with role-based access control
+* rate limiting on scan validation endpoints
+
+---
+
+# 9. Smart Features to Make the Project Stand Out
+
+Add these innovation modules:
+
+## 1. AI Dish Recommendation
+
+Recommend dishes using:
+
+* popularity
+* time of day
+* category combos
+* previous table ordering patterns
+
+Examples:
+
+* “Most loved with burgers”
+* “Popular combo tonight”
+* “Customers also order”
+
+## 2. Live Kitchen Timer
+
+Estimate prep time dynamically based on:
+
+* number of pending orders
+* item prep complexity
+* current kitchen load
+
+## 3. Waiter Notification Engine
+
+Trigger waiter alerts when:
+
+* order ready
+* customer requests bill help
+* table needs cleanup after exit
+
+## 4. Table Occupancy System
+
+Show:
+
+* free tables
+* occupied tables
+* payment pending
+* served / active dining
+* cleanup needed
+
+## 5. Analytics Dashboard
+
+Include charts for:
+
+* top-selling dishes
+* revenue by hour
+* average prep time
+* peak rush periods
+* occupancy heatmap
+* cancellation/refund trends
+* payment method split
+
+## 6. Smart Upsell Engine
+
+Before checkout:
+
+* suggest drinks, desserts, add-ons
+* combo recommendations
+* profitable pairing logic
+
+## 7. Session Recovery
+
+If customer refreshes or rescans table QR:
+
+* resume active table session safely
+* restore existing cart or active order context
+
+## 8. Multi-Branch Readiness
+
+Architect system so future expansion supports:
+
+* multiple outlets
+* branch-specific menus
+* branch-specific staff
+* branch-level analytics
+
+---
+
+# 10. Hardware / Automation Prototype Logic
+
+Design practical smart door prototype.
+
+## Hardware Assumptions
+
+* Raspberry Pi
+* QR scanner or Pi camera
+* electric maglock / strike lock
+* internet-connected or LAN-connected validation device
+
+## Device Flow
+
+1. Scan QR
+2. Send token to backend validation endpoint
+3. Receive allow/deny response
+4. If allow:
+
+   * trigger relay
+   * unlock door for 3–5 seconds
+   * relock automatically
+5. Store device-side and server-side access logs
+
+## Also provide:
+
+* fallback offline-safe behavior strategy
+* failure handling
+* manual admin override option
+
+---
+
+# 11. Required Pages / Screens
+
+Build all of these:
+
+## Customer
+
+* Table landing page
+* Menu browsing page
+* Cart page
+* Checkout / payment page
+* Order tracking page
+* Exit QR success page
+
+## Staff
+
+* Login
+* Kitchen dashboard
+* Waiter dashboard
+* Admin dashboard
+* Payment records
+* Table management
+* Menu management
+* Order history
+* Exit access logs
+
+## Device / Door
+
+* Minimal scan verification screen
+* Access granted / denied state UI
+
+---
+
+# 12. Development Requirements
+
+Deliver as a structured real project, not only mock UI.
+
+Need:
+
+* proper folder structure
+* reusable components
+* clean API separation
+* environment variables
+* seed data
+* sample restaurant data
+* role-based auth
+* production-style error handling
+* loading and empty states
+* documentation / README
+* deployment-ready codebase
+
+---
+
+# 13. Demo Data Requirements
+
+Seed the app with:
+
+* 10 to 20 tables
+* 25+ menu items
+* multiple categories
+* several example orders
+* mock staff accounts:
+
+  * admin
+  * kitchen
+  * waiter
+  * cashier
+
+Include realistic dummy food names, prices, and images/placeholders.
+
+---
+
+# 14. Final Deliverables
+
+I want the following from you:
+
+1. full production-style codebase
+2. database schema
+3. seed data
+4. QR table flow implementation
+5. kitchen dashboard
+6. payment integration scaffold
+7. temporary exit QR generation
+8. door validation endpoint
+9. Raspberry Pi / smart lock integration plan
+10. polished responsive UI
+11. charts and analytics
+12. complete README with setup steps
+13. architecture explanation
+14. future improvements section
+
+---
+
+# 15. Quality Bar
+
+This project must feel like:
+
+* a serious startup MVP
+* final-year-project gold standard
+* restaurant automation with real-world logic
+* investor-demo ready
+* smooth, elegant, practical, and secure
+
+Do not build a generic CRUD app.
+Do not build only static pages.
+Build an end-to-end intelligent restaurant operating system prototype.
+
+Start by:
+
+1. defining architecture
+2. creating database schema
+3. building customer flow
+4. building kitchen/admin flow
+5. implementing payment and exit token logic
+6. designing hardware door validation layer
+7. polishing UI/UX throughout
+
+---
+
+*Key Improvements:*
+
+* Expanded your concept into a true execution-grade build prompt
+* Added security, session logic, dashboards, roles, and hardware validation flow
+* Turned the idea from “QR menu app” into a complete restaurant operating system
+* Structured it so Replit Agent can build in the right order without ambiguity
+
+*Techniques Applied:* Constraint-based prompt design, system decomposition, role assignment, feature expansion, production-focused architecture prompting.
+
+*Pro Tip:* After this, your next follow-up prompt should ask for: “Now generate the database schema, full page map, API routes, and folder structure before coding.”
