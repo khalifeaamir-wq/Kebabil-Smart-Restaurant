@@ -297,5 +297,192 @@ export async function registerRoutes(
     }
   });
 
+  // ===== PAYMENT ROUTES =====
+  app.get("/api/session/:sessionId/bill", async (req, res) => {
+    try {
+      const sessionId = parseInt(req.params.sessionId);
+      const session = await storage.getSessionById(sessionId);
+      if (!session) { res.status(404).json({ message: "Session not found" }); return; }
+
+      const sessionOrders = await storage.getOrdersBySession(sessionId);
+      const ordersWithItems = await Promise.all(
+        sessionOrders.map(async (order) => {
+          const items = await storage.getOrderItemsByOrder(order.id);
+          return { ...order, items };
+        })
+      );
+
+      const subtotal = sessionOrders.reduce((sum, o) => sum + o.subtotal, 0);
+      const tax = sessionOrders.reduce((sum, o) => sum + o.tax, 0);
+      const total = sessionOrders.reduce((sum, o) => sum + o.total, 0);
+
+      const existingPayments = await storage.getPaymentsBySession(sessionId);
+      const isPaid = existingPayments.some(p => p.paymentStatus === "completed");
+
+      res.json({
+        session,
+        orders: ordersWithItems,
+        bill: { subtotal, tax, total },
+        isPaid,
+        payments: existingPayments,
+      });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to generate bill" });
+    }
+  });
+
+  app.post("/api/payments", async (req, res) => {
+    try {
+      const { sessionId, amount, paymentMethod } = req.body;
+      const payment = await storage.createPayment({
+        sessionId,
+        amount,
+        paymentMethod: paymentMethod || "upi",
+        paymentStatus: "pending",
+      });
+      res.status(201).json(payment);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to create payment" });
+    }
+  });
+
+  app.patch("/api/payments/:id/complete", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const { paymentMethod, transactionRef } = req.body;
+
+      const payment = await storage.updatePayment(id, {
+        paymentStatus: "completed",
+        paymentMethod: paymentMethod || "cash",
+        transactionRef: transactionRef || `CASH-${Date.now()}`,
+        paidAt: new Date(),
+      });
+
+      if (!payment) { res.status(404).json({ message: "Payment not found" }); return; }
+
+      await storage.updateSession(payment.sessionId, { status: "paid" });
+
+      const expiresAt = new Date(Date.now() + 3 * 60 * 1000);
+      const tokenHash = crypto.randomBytes(32).toString("hex");
+      const exitToken = await storage.createExitToken({
+        sessionId: payment.sessionId,
+        paymentId: payment.id,
+        tokenHash,
+        expiresAt,
+      });
+
+      broadcast("payment_complete", { sessionId: payment.sessionId, paymentId: payment.id });
+
+      res.json({ payment, exitToken });
+    } catch (error) {
+      console.error("Error completing payment:", error);
+      res.status(500).json({ message: "Failed to complete payment" });
+    }
+  });
+
+  // ===== EXIT TOKEN ROUTES =====
+  app.get("/api/exit-token/:sessionId", async (req, res) => {
+    try {
+      const sessionId = parseInt(req.params.sessionId);
+      const token = await storage.getExitTokenBySession(sessionId);
+      if (!token) { res.status(404).json({ message: "No exit token found" }); return; }
+
+      const isExpired = new Date() > new Date(token.expiresAt);
+      res.json({ ...token, isExpired });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch exit token" });
+    }
+  });
+
+  app.post("/api/exit-token/verify", async (req, res) => {
+    try {
+      const { tokenHash } = req.body;
+      const token = await storage.getExitTokenByHash(tokenHash);
+
+      if (!token) {
+        await storage.createDoorAccessLog({ exitTokenId: 0, result: "failed", reason: "Token not found" });
+        res.status(400).json({ valid: false, reason: "Invalid token" });
+        return;
+      }
+
+      if (token.isUsed) {
+        await storage.createDoorAccessLog({ exitTokenId: token.id, result: "failed", reason: "Token already used" });
+        res.status(400).json({ valid: false, reason: "Token already used" });
+        return;
+      }
+
+      if (new Date() > new Date(token.expiresAt)) {
+        await storage.createDoorAccessLog({ exitTokenId: token.id, result: "failed", reason: "Token expired" });
+        res.status(400).json({ valid: false, reason: "Token expired" });
+        return;
+      }
+
+      await storage.updateExitToken(token.id, { isUsed: true, usedAt: new Date() });
+      await storage.createDoorAccessLog({ exitTokenId: token.id, result: "success" });
+
+      const session = await storage.getSessionById(token.sessionId);
+      if (session) {
+        await storage.updateSession(session.id, { status: "exited", closedAt: new Date() });
+        const table = await storage.getTableByNumber(session.tableId);
+        if (table) {
+          await storage.updateTable(table.id, { status: "available", activeSessionId: null });
+        }
+      }
+
+      broadcast("exit_verified", { sessionId: token.sessionId, tokenId: token.id });
+
+      res.json({ valid: true, message: "Exit authorized. Door unlocked." });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to verify exit token" });
+    }
+  });
+
+  // ===== WAITER DASHBOARD DATA =====
+  app.get("/api/waiter/tables", async (_req, res) => {
+    try {
+      const tables = await storage.getTables();
+      const tablesWithDetails = await Promise.all(
+        tables.map(async (table) => {
+          let session = null;
+          let activeOrders: any[] = [];
+          if (table.activeSessionId) {
+            session = await storage.getSessionById(table.activeSessionId);
+            if (session) {
+              const sessionOrders = await storage.getOrdersBySession(session.id);
+              activeOrders = await Promise.all(
+                sessionOrders.map(async (order) => {
+                  const items = await storage.getOrderItemsByOrder(order.id);
+                  return { ...order, items };
+                })
+              );
+            }
+          }
+          return { ...table, session, orders: activeOrders };
+        })
+      );
+      res.json(tablesWithDetails);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch waiter data" });
+    }
+  });
+
+  app.post("/api/waiter/table/:tableId/clear", async (req, res) => {
+    try {
+      const tableId = parseInt(req.params.tableId);
+      const table = await storage.getTables().then(t => t.find(tb => tb.id === tableId));
+      if (!table) { res.status(404).json({ message: "Table not found" }); return; }
+
+      if (table.activeSessionId) {
+        await storage.updateSession(table.activeSessionId, { status: "exited", closedAt: new Date() });
+      }
+      await storage.updateTable(tableId, { status: "available", activeSessionId: null });
+
+      broadcast("table_cleared", { tableId });
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to clear table" });
+    }
+  });
+
   return httpServer;
 }

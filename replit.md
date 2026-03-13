@@ -23,8 +23,9 @@ Premium restaurant website for Kebabil — a Middle Eastern & Indian fusion keba
 
 ## Pages
 - `/` — Landing page (main restaurant website)
-- `/table/:tableNumber` — Customer ordering flow (scanned from table QR)
+- `/table/:tableNumber` — Customer ordering flow (scan QR → menu → cart → order → track → pay → exit pass)
 - `/kitchen` — Kitchen dashboard (real-time order management)
+- `/waiter` — Waiter dashboard (table overview, ready-to-serve alerts, table clearing)
 
 ## API Routes
 ### Menu
@@ -45,9 +46,23 @@ Premium restaurant website for Kebabil — a Middle Eastern & Indian fusion keba
 - `GET /api/orders/session/:sessionId` — Get orders for a session
 - `PATCH /api/orders/:id/status` — Update order status (new → accepted → preparing → ready → served)
 
+### Payments & Exit
+- `GET /api/session/:sessionId/bill` — Get full bill for a session
+- `POST /api/payments` — Create payment record
+- `PATCH /api/payments/:id/complete` — Complete payment, generate exit token
+- `GET /api/exit-token/:sessionId` — Get exit token for session
+- `POST /api/exit-token/verify` — Verify exit token at door
+
+### Waiter
+- `GET /api/waiter/tables` — Get all tables with session/order details
+- `POST /api/waiter/table/:tableId/clear` — Clear a table after guests leave
+
 ## WebSocket Events
 - `new_order` — Broadcasted when a new order is placed
 - `order_update` — Broadcasted when order status changes
+- `payment_complete` — Broadcasted when payment is completed
+- `exit_verified` — Broadcasted when exit token is verified
+- `table_cleared` — Broadcasted when a table is cleared
 
 ## Database Tables
 - `menu_categories` — id, name, sort_order, is_active
@@ -56,6 +71,9 @@ Premium restaurant website for Kebabil — a Middle Eastern & Indian fusion keba
 - `dining_sessions` — id, table_id, session_code, status, opened_at, closed_at
 - `orders` — id, session_id, table_id, order_number, status, subtotal, tax, total, notes, created_at, updated_at
 - `order_items` — id, order_id, menu_item_id, menu_item_name, quantity, unit_price, total_price, item_note, variant
+- `payments` — id, session_id, amount, payment_method, payment_status, transaction_ref, paid_at, created_at
+- `exit_tokens` — id, session_id, payment_id, token_hash, issued_at, expires_at, is_used, used_at
+- `door_access_logs` — id, exit_token_id, scan_time, result, reason
 
 ## Contact Info
 - Phone: +91 86696 67566

@@ -71,12 +71,45 @@ export const orderItems = pgTable("order_items", {
   variant: text("variant").notNull().default(""),
 });
 
+export const payments = pgTable("payments", {
+  id: serial("id").primaryKey(),
+  sessionId: integer("session_id").notNull(),
+  amount: integer("amount").notNull(),
+  paymentMethod: text("payment_method").notNull().default("pending"),
+  paymentStatus: text("payment_status").notNull().default("pending"),
+  transactionRef: text("transaction_ref").notNull().default(""),
+  paidAt: timestamp("paid_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const exitTokens = pgTable("exit_tokens", {
+  id: serial("id").primaryKey(),
+  sessionId: integer("session_id").notNull(),
+  paymentId: integer("payment_id").notNull(),
+  tokenHash: text("token_hash").notNull().unique(),
+  issuedAt: timestamp("issued_at").notNull().defaultNow(),
+  expiresAt: timestamp("expires_at").notNull(),
+  isUsed: boolean("is_used").notNull().default(false),
+  usedAt: timestamp("used_at"),
+});
+
+export const doorAccessLogs = pgTable("door_access_logs", {
+  id: serial("id").primaryKey(),
+  exitTokenId: integer("exit_token_id").notNull(),
+  scanTime: timestamp("scan_time").notNull().defaultNow(),
+  result: text("result").notNull().default("success"),
+  reason: text("reason").notNull().default(""),
+});
+
 export const insertMenuCategorySchema = createInsertSchema(menuCategories).omit({ id: true });
 export const insertMenuItemSchema = createInsertSchema(menuItems).omit({ id: true });
 export const insertTableSchema = createInsertSchema(restaurantTables).omit({ id: true });
 export const insertSessionSchema = createInsertSchema(diningSessions).omit({ id: true });
 export const insertOrderSchema = createInsertSchema(orders).omit({ id: true });
 export const insertOrderItemSchema = createInsertSchema(orderItems).omit({ id: true });
+export const insertPaymentSchema = createInsertSchema(payments).omit({ id: true });
+export const insertExitTokenSchema = createInsertSchema(exitTokens).omit({ id: true });
+export const insertDoorAccessLogSchema = createInsertSchema(doorAccessLogs).omit({ id: true });
 
 export type MenuCategory = typeof menuCategories.$inferSelect;
 export type InsertMenuCategory = z.infer<typeof insertMenuCategorySchema>;
@@ -90,3 +123,9 @@ export type Order = typeof orders.$inferSelect;
 export type InsertOrder = z.infer<typeof insertOrderSchema>;
 export type OrderItem = typeof orderItems.$inferSelect;
 export type InsertOrderItem = z.infer<typeof insertOrderItemSchema>;
+export type Payment = typeof payments.$inferSelect;
+export type InsertPayment = z.infer<typeof insertPaymentSchema>;
+export type ExitToken = typeof exitTokens.$inferSelect;
+export type InsertExitToken = z.infer<typeof insertExitTokenSchema>;
+export type DoorAccessLog = typeof doorAccessLogs.$inferSelect;
+export type InsertDoorAccessLog = z.infer<typeof insertDoorAccessLogSchema>;

@@ -7,6 +7,7 @@ import NotFound from "@/pages/not-found";
 import Home from "@/pages/Home";
 import TableOrder from "@/pages/TableOrder";
 import Kitchen from "@/pages/Kitchen";
+import Waiter from "@/pages/Waiter";
 
 function Router() {
   return (
@@ -14,6 +15,7 @@ function Router() {
       <Route path="/" component={Home}/>
       <Route path="/table/:tableNumber" component={TableOrder}/>
       <Route path="/kitchen" component={Kitchen}/>
+      <Route path="/waiter" component={Waiter}/>
       <Route component={NotFound} />
     </Switch>
   );
