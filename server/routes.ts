@@ -484,5 +484,111 @@ export async function registerRoutes(
     }
   });
 
+  // ===== ANALYTICS ROUTES =====
+  app.get("/api/analytics/overview", async (_req, res) => {
+    try {
+      const allOrders = await storage.getAllOrders();
+      const allSessions = await storage.getAllSessions();
+      const allPayments = await storage.getAllPayments();
+      const allOrderItems = await storage.getAllOrderItems();
+      const tables = await storage.getTables();
+      const doorLogs = await storage.getDoorAccessLogs();
+
+      const totalRevenue = allPayments.filter(p => p.paymentStatus === "completed").reduce((sum, p) => sum + p.amount, 0);
+      const totalOrders = allOrders.length;
+      const totalSessions = allSessions.length;
+      const occupiedTables = tables.filter(t => t.status === "occupied").length;
+
+      const now = new Date();
+      const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const todayOrders = allOrders.filter(o => new Date(o.createdAt) >= todayStart);
+      const todayRevenue = allPayments.filter(p => p.paymentStatus === "completed" && new Date(p.paidAt || p.createdAt) >= todayStart).reduce((sum, p) => sum + p.amount, 0);
+      const todaySessions = allSessions.filter(s => new Date(s.openedAt) >= todayStart);
+
+      const itemPopularity: Record<string, { name: string; count: number; revenue: number }> = {};
+      for (const oi of allOrderItems) {
+        if (!itemPopularity[oi.menuItemName]) {
+          itemPopularity[oi.menuItemName] = { name: oi.menuItemName, count: 0, revenue: 0 };
+        }
+        itemPopularity[oi.menuItemName].count += oi.quantity;
+        itemPopularity[oi.menuItemName].revenue += oi.totalPrice;
+      }
+      const topItems = Object.values(itemPopularity).sort((a, b) => b.count - a.count).slice(0, 10);
+
+      const ordersByStatus: Record<string, number> = {};
+      for (const o of allOrders) {
+        ordersByStatus[o.status] = (ordersByStatus[o.status] || 0) + 1;
+      }
+
+      const paymentMethods: Record<string, { count: number; total: number }> = {};
+      for (const p of allPayments.filter(p => p.paymentStatus === "completed")) {
+        if (!paymentMethods[p.paymentMethod]) {
+          paymentMethods[p.paymentMethod] = { count: 0, total: 0 };
+        }
+        paymentMethods[p.paymentMethod].count++;
+        paymentMethods[p.paymentMethod].total += p.amount;
+      }
+
+      const hourlyOrders: Record<number, number> = {};
+      for (const o of todayOrders) {
+        const hour = new Date(o.createdAt).getHours();
+        hourlyOrders[hour] = (hourlyOrders[hour] || 0) + 1;
+      }
+      const hourlyData = Array.from({ length: 24 }, (_, h) => ({
+        hour: h,
+        label: `${h.toString().padStart(2, "0")}:00`,
+        orders: hourlyOrders[h] || 0,
+      }));
+
+      const doorAccessStats = {
+        total: doorLogs.length,
+        successful: doorLogs.filter(d => d.result === "success").length,
+        failed: doorLogs.filter(d => d.result === "failed").length,
+      };
+
+      const avgOrderValue = totalOrders > 0 ? Math.round(allOrders.reduce((s, o) => s + o.total, 0) / totalOrders) : 0;
+
+      res.json({
+        summary: {
+          totalRevenue,
+          totalOrders,
+          totalSessions,
+          occupiedTables,
+          totalTables: tables.length,
+          todayRevenue,
+          todayOrders: todayOrders.length,
+          todaySessions: todaySessions.length,
+          avgOrderValue,
+        },
+        topItems,
+        ordersByStatus,
+        paymentMethods,
+        hourlyData,
+        doorAccessStats,
+        recentOrders: allOrders.slice(0, 20).map(o => ({
+          id: o.id,
+          orderNumber: o.orderNumber,
+          tableId: o.tableId,
+          status: o.status,
+          total: o.total,
+          createdAt: o.createdAt,
+        })),
+      });
+    } catch (error) {
+      console.error("Analytics error:", error);
+      res.status(500).json({ message: "Failed to fetch analytics" });
+    }
+  });
+
+  // ===== DOOR ACCESS LOGS =====
+  app.get("/api/door/logs", async (_req, res) => {
+    try {
+      const logs = await storage.getDoorAccessLogs();
+      res.json(logs);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch door logs" });
+    }
+  });
+
   return httpServer;
 }

@@ -8,6 +8,8 @@ import Home from "@/pages/Home";
 import TableOrder from "@/pages/TableOrder";
 import Kitchen from "@/pages/Kitchen";
 import Waiter from "@/pages/Waiter";
+import Analytics from "@/pages/Analytics";
+import DoorScanner from "@/pages/DoorScanner";
 
 function Router() {
   return (
@@ -16,6 +18,8 @@ function Router() {
       <Route path="/table/:tableNumber" component={TableOrder}/>
       <Route path="/kitchen" component={Kitchen}/>
       <Route path="/waiter" component={Waiter}/>
+      <Route path="/analytics" component={Analytics}/>
+      <Route path="/door" component={DoorScanner}/>
       <Route component={NotFound} />
     </Switch>
   );

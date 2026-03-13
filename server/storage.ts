@@ -156,6 +156,22 @@ export class DatabaseStorage {
     const [created] = await db.insert(doorAccessLogs).values(log).returning();
     return created;
   }
+  async getDoorAccessLogs(): Promise<DoorAccessLog[]> {
+    return db.select().from(doorAccessLogs).orderBy(desc(doorAccessLogs.scanTime));
+  }
+
+  async getAllOrders(): Promise<Order[]> {
+    return db.select().from(orders).orderBy(desc(orders.createdAt));
+  }
+  async getAllSessions(): Promise<DiningSession[]> {
+    return db.select().from(diningSessions).orderBy(desc(diningSessions.openedAt));
+  }
+  async getAllPayments(): Promise<Payment[]> {
+    return db.select().from(payments).orderBy(desc(payments.createdAt));
+  }
+  async getAllOrderItems(): Promise<OrderItem[]> {
+    return db.select().from(orderItems);
+  }
 }
 
 export const storage = new DatabaseStorage();

@@ -101,9 +101,12 @@ export default function Kitchen() {
               <p className="text-xs text-foreground/40">{orders.length} active orders</p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-            <span className="text-xs text-green-400">Live</span>
+          <div className="flex items-center gap-4">
+            <a href="/waiter" className="text-xs text-amber-400 hover:text-amber-300 uppercase tracking-wider" data-testid="link-waiter">Waiter</a>
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+              <span className="text-xs text-green-400">Live</span>
+            </div>
           </div>
         </div>
 

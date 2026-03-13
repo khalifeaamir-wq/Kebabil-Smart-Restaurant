@@ -26,6 +26,8 @@ Premium restaurant website for Kebabil — a Middle Eastern & Indian fusion keba
 - `/table/:tableNumber` — Customer ordering flow (scan QR → menu → cart → order → track → pay → exit pass)
 - `/kitchen` — Kitchen dashboard (real-time order management)
 - `/waiter` — Waiter dashboard (table overview, ready-to-serve alerts, table clearing)
+- `/analytics` — Analytics dashboard (revenue, orders, top items, hourly trends, door access)
+- `/door` — Door scanner (verify exit QR tokens at the door)
 
 ## API Routes
 ### Menu
@@ -56,6 +58,10 @@ Premium restaurant website for Kebabil — a Middle Eastern & Indian fusion keba
 ### Waiter
 - `GET /api/waiter/tables` — Get all tables with session/order details
 - `POST /api/waiter/table/:tableId/clear` — Clear a table after guests leave
+
+### Analytics & Door
+- `GET /api/analytics/overview` — Full analytics dashboard data (summary, top items, hourly trends, payment methods, door access)
+- `GET /api/door/logs` — Door access logs
 
 ## WebSocket Events
 - `new_order` — Broadcasted when a new order is placed
