@@ -534,6 +534,22 @@ export async function registerRoutes(
     }
   });
 
+  // ===== ADMIN: Update table capacity =====
+  app.patch("/api/admin/table/:tableId", requireAdmin, async (req, res) => {
+    try {
+      const tableId = parseInt(req.params.tableId);
+      const { capacity } = req.body;
+      if (capacity !== undefined && (typeof capacity !== "number" || capacity < 1 || capacity > 20)) {
+        return res.status(400).json({ message: "Capacity must be between 1 and 20" });
+      }
+      const updated = await storage.updateTable(tableId, { capacity });
+      if (!updated) return res.status(404).json({ message: "Table not found" });
+      res.json(updated);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update table" });
+    }
+  });
+
   // ===== WAITER DASHBOARD DATA =====
   app.get("/api/waiter/tables", requireAdmin, async (_req, res) => {
     try {

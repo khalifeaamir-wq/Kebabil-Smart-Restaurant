@@ -32,6 +32,7 @@ export const menuItems = pgTable("menu_items", {
 export const restaurantTables = pgTable("restaurant_tables", {
   id: serial("id").primaryKey(),
   tableNumber: integer("table_number").notNull().unique(),
+  capacity: integer("capacity").notNull().default(4),
   status: text("status").notNull().default("available"),
   activeSessionId: integer("active_session_id"),
 });

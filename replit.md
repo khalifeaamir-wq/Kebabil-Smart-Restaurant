@@ -29,7 +29,7 @@ Premium restaurant website for Kebabil — a Middle Eastern & Indian fusion keba
 - `/analytics` — Analytics dashboard (revenue, orders, top items, hourly trends, door access)
 - `/door` — Door scanner (verify exit QR tokens at the door)
 - `/qr-codes` — Printable QR codes for all tables (admin-protected, print-ready layout)
-- `/admin` — Admin login portal (redirects to kitchen after login)
+- `/admin` — Admin panel (live floor map, clickable table details with full order info, capacity management)
 
 ## Authentication
 - Staff pages (kitchen, waiter, analytics, door) require admin login
@@ -75,6 +75,9 @@ Premium restaurant website for Kebabil — a Middle Eastern & Indian fusion keba
 - `GET /api/waiter/tables` — Get all tables with session/order details
 - `POST /api/waiter/table/:tableId/clear` — Clear a table after guests leave
 
+### Admin
+- `PATCH /api/admin/table/:tableId` — Update table settings (capacity)
+
 ### Analytics & Door
 - `GET /api/analytics/overview` — Full analytics dashboard data (summary, top items, hourly trends, payment methods, door access)
 - `GET /api/door/logs` — Door access logs
@@ -89,7 +92,7 @@ Premium restaurant website for Kebabil — a Middle Eastern & Indian fusion keba
 ## Database Tables
 - `menu_categories` — id, name, sort_order, is_active
 - `menu_items` — id, category_id, name, description, price, price_value, variants[], addons[], badge, image_url, type, spice_level, is_available, prep_time_minutes, sort_order, is_active
-- `restaurant_tables` — id, table_number, status, active_session_id
+- `restaurant_tables` — id, table_number, capacity, status, active_session_id
 - `dining_sessions` — id, table_id, session_code, status, opened_at, closed_at
 - `orders` — id, session_id, table_id, order_number, status, subtotal, tax, total, notes, created_at, updated_at
 - `order_items` — id, order_id, menu_item_id, menu_item_name, quantity, unit_price, total_price, item_note, variant

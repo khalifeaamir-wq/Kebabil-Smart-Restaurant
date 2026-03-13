@@ -11,6 +11,7 @@ import Waiter from "@/pages/Waiter";
 import Analytics from "@/pages/Analytics";
 import DoorScanner from "@/pages/DoorScanner";
 import TableQRCodes from "@/pages/TableQRCodes";
+import AdminPanel from "@/pages/AdminPanel";
 import AdminLogin from "@/pages/AdminLogin";
 import { useAuth } from "@/lib/useAuth";
 
@@ -54,10 +55,7 @@ function Router() {
     <Switch>
       <Route path="/" component={Home}/>
       <Route path="/table/:tableNumber" component={TableOrder}/>
-      <Route path="/admin">{() => <AdminRoute component={() => {
-        if (typeof window !== "undefined") window.location.href = "/kitchen";
-        return null;
-      }} />}</Route>
+      <Route path="/admin">{() => <AdminRoute component={AdminPanel} />}</Route>
       <Route path="/kitchen">{() => <AdminRoute component={Kitchen} />}</Route>
       <Route path="/waiter">{() => <AdminRoute component={Waiter} />}</Route>
       <Route path="/analytics">{() => <AdminRoute component={Analytics} />}</Route>
