@@ -5,6 +5,7 @@ import { Users, Clock, CheckCircle2, AlertCircle, Utensils, Trash2, Bell, Credit
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { wsClient } from "@/lib/websocket";
+import { useToast } from "@/hooks/use-toast";
 import logoImg from "@assets/468146293_3917545001849558_7757020803682063832_n-removebg-prev_1772140405610.png";
 
 interface TableData {
@@ -27,6 +28,20 @@ interface TableData {
   }[];
 }
 
+interface PendingPaymentData {
+  paymentId: number;
+  sessionId: number;
+  tableId: number;
+  tableNumber: number;
+  orderId: number | null;
+  orderNumber: string;
+  amount: number;
+  paymentMethod: string;
+  paymentStatus: string;
+  transactionRef: string;
+  createdAt: string;
+}
+
 const statusColors: Record<string, string> = {
   available: "bg-green-500/10 border-green-500/30 text-green-400",
   occupied: "bg-blue-500/10 border-blue-500/30 text-blue-400",
@@ -45,13 +60,24 @@ const orderStatusColors: Record<string, string> = {
 const formatPrice = (paise: number) => `₹${(paise / 100).toFixed(0)}`;
 
 export default function Waiter() {
+  const { toast } = useToast();
   const { data: tables = [], refetch } = useQuery<TableData[]>({
     queryKey: ["waiter-tables"],
     queryFn: async () => {
-      const res = await fetch("/api/waiter/tables");
+      const res = await fetch("/api/waiter/tables", { credentials: "include" });
       return res.json();
     },
     refetchInterval: 10000,
+  });
+
+  const { data: pendingPayments = [], refetch: refetchPendingPayments } = useQuery<PendingPaymentData[]>({
+    queryKey: ["waiter-pending-payments"],
+    queryFn: async () => {
+      const res = await fetch("/api/waiter/payments/pending", { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch pending payments");
+      return res.json();
+    },
+    refetchInterval: 5000,
   });
 
   useEffect(() => {
@@ -64,9 +90,16 @@ export default function Waiter() {
     return () => { unsub1(); unsub2(); unsub3(); unsub4(); unsub5(); };
   }, [refetch]);
 
+  useEffect(() => {
+    wsClient.connect();
+    const unsub1 = wsClient.on("payment_complete", () => refetchPendingPayments());
+    const unsub2 = wsClient.on("new_order", () => refetchPendingPayments());
+    return () => { unsub1(); unsub2(); };
+  }, [refetchPendingPayments]);
+
   const clearTableMutation = useMutation({
     mutationFn: async (tableId: number) => {
-      const res = await fetch(`/api/waiter/table/${tableId}/clear`, { method: "POST" });
+      const res = await fetch(`/api/waiter/table/${tableId}/clear`, { method: "POST", credentials: "include" });
       if (!res.ok) throw new Error("Failed to clear table");
       return res.json();
     },
@@ -78,12 +111,45 @@ export default function Waiter() {
       const res = await fetch(`/api/orders/${orderId}/status`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({ status }),
       });
       if (!res.ok) throw new Error("Failed to update");
       return res.json();
     },
     onSuccess: () => refetch(),
+  });
+
+  const confirmPaymentMutation = useMutation({
+    mutationFn: async (paymentId: number) => {
+      const res = await fetch(`/api/waiter/payments/${paymentId}/confirm`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({}),
+      });
+      if (res.ok) return res.json();
+
+      const fallback = await fetch(`/api/payments/${paymentId}/complete`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({}),
+      });
+      if (!fallback.ok) {
+        const error = await fallback.json().catch(() => ({}));
+        throw new Error(error.message || "Failed to confirm payment");
+      }
+      return fallback.json();
+    },
+    onSuccess: () => {
+      refetch();
+      refetchPendingPayments();
+      toast({ title: "Payment confirmed", description: "Exit PIN is now available to customer." });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Confirmation failed", description: error.message, variant: "destructive" });
+    },
   });
 
   const occupiedTables = tables.filter((t) => t.status === "occupied");
@@ -139,6 +205,38 @@ export default function Waiter() {
                   data-testid={`serve-order-${order.id}`}
                 >
                   <CheckCircle2 className="w-3 h-3 mr-1" /> Served
+                </Button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {pendingPayments.length > 0 && (
+        <div className="mx-4 mt-4 bg-amber-500/10 border border-amber-500/30 p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <CreditCard className="w-5 h-5 text-amber-400" />
+            <span className="text-amber-400 text-sm font-medium uppercase tracking-wider">Pending Payment Verification ({pendingPayments.length})</span>
+          </div>
+          <div className="space-y-2">
+            {pendingPayments.map((payment) => (
+              <div key={payment.paymentId} className="flex items-center justify-between bg-amber-500/5 p-3 border border-amber-500/20">
+                <div>
+                  <div className="text-sm text-white font-medium">
+                    Table {payment.tableNumber} · {payment.orderNumber || "Order Pending"}
+                  </div>
+                  <div className="text-xs text-foreground/50 mt-1">
+                    Method: {payment.paymentMethod.toUpperCase()} · Amount: {formatPrice(payment.amount)}
+                  </div>
+                </div>
+                <Button
+                  size="sm"
+                  onClick={() => confirmPaymentMutation.mutate(payment.paymentId)}
+                  disabled={confirmPaymentMutation.isPending}
+                  className="bg-amber-500 text-black hover:bg-amber-400 rounded-none text-[10px] uppercase tracking-wider h-9"
+                  data-testid={`confirm-payment-${payment.paymentId}`}
+                >
+                  {confirmPaymentMutation.isPending ? "Confirming..." : "Confirm Payment"}
                 </Button>
               </div>
             ))}

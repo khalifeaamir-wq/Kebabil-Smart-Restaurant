@@ -5,12 +5,8 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/not-found";
 import Home from "@/pages/Home";
+import TableEntry from "@/pages/TableEntry";
 import TableOrder from "@/pages/TableOrder";
-import Kitchen from "@/pages/Kitchen";
-import Waiter from "@/pages/Waiter";
-import Analytics from "@/pages/Analytics";
-import DoorScanner from "@/pages/DoorScanner";
-import TableQRCodes from "@/pages/TableQRCodes";
 import AdminPanel from "@/pages/AdminPanel";
 import AdminLogin from "@/pages/AdminLogin";
 import { useAuth } from "@/lib/useAuth";
@@ -54,13 +50,10 @@ function Router() {
   return (
     <Switch>
       <Route path="/" component={Home}/>
-      <Route path="/table/:tableNumber" component={TableOrder}/>
+      <Route path="/table/:tableNumber" component={TableEntry}/>
+      <Route path="/t/:tableId/:qrToken" component={TableOrder}/>
+      <Route path="/t/:tableId" component={TableOrder}/>
       <Route path="/admin">{() => <AdminRoute component={AdminPanel} />}</Route>
-      <Route path="/kitchen">{() => <AdminRoute component={Kitchen} />}</Route>
-      <Route path="/waiter">{() => <AdminRoute component={Waiter} />}</Route>
-      <Route path="/analytics">{() => <AdminRoute component={Analytics} />}</Route>
-      <Route path="/door">{() => <AdminRoute component={DoorScanner} />}</Route>
-      <Route path="/qr-codes">{() => <AdminRoute component={TableQRCodes} />}</Route>
       <Route component={NotFound} />
     </Switch>
   );

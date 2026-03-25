@@ -66,7 +66,7 @@ export default function AdminLogin({ onLogin }: AdminLoginProps) {
           <p className="text-neutral-500 text-sm mt-2">
             {needsSetup
               ? "Create your owner account to get started"
-              : "Sign in to access staff dashboards"
+              : "Sign in to access the admin dashboard"
             }
           </p>
         </div>

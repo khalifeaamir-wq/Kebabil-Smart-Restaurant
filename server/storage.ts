@@ -7,44 +7,88 @@ import {
   type OrderItem, type InsertOrderItem,
   type Payment, type InsertPayment,
   type ExitToken, type InsertExitToken,
+  type ExitPin, type InsertExitPin,
   type DoorAccessLog, type InsertDoorAccessLog,
   type AdminUser, type InsertAdminUser,
   menuCategories, menuItems,
   restaurantTables, diningSessions, orders, orderItems,
-  payments, exitTokens, doorAccessLogs, adminUsers,
+  payments, exitTokens, exitPins, doorAccessLogs, adminUsers,
 } from "@shared/schema";
 import { eq, asc, desc, and, inArray, lt } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/node-postgres";
-import pg from "pg";
+import { drizzle } from "drizzle-orm/better-sqlite3";
+import Database from "better-sqlite3";
 
-const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
-export const db = drizzle(pool);
+const sqlite = new Database("kebabil.db");
+sqlite.exec(`
+  CREATE TABLE IF NOT EXISTS exit_pins (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    order_id INTEGER NOT NULL,
+    table_id INTEGER NOT NULL,
+    payment_id INTEGER NOT NULL,
+    pin_hash TEXT NOT NULL,
+    pin_code TEXT NOT NULL DEFAULT '',
+    status TEXT NOT NULL DEFAULT 'active',
+    expires_at INTEGER NOT NULL,
+    used_at INTEGER,
+    attempts INTEGER NOT NULL DEFAULT 0,
+    max_attempts INTEGER NOT NULL DEFAULT 5,
+    created_at INTEGER NOT NULL DEFAULT (unixepoch())
+  );
+  CREATE INDEX IF NOT EXISTS idx_exit_pins_table_status ON exit_pins(table_id, status);
+  CREATE INDEX IF NOT EXISTS idx_exit_pins_order ON exit_pins(order_id);
+`);
+
+const paymentColumns = sqlite.prepare("PRAGMA table_info(payments)").all() as Array<{ name: string }>;
+if (!paymentColumns.some((c) => c.name === "verified_by_admin_id")) {
+  sqlite.exec("ALTER TABLE payments ADD COLUMN verified_by_admin_id INTEGER");
+}
+if (!paymentColumns.some((c) => c.name === "verified_by_name")) {
+  sqlite.exec("ALTER TABLE payments ADD COLUMN verified_by_name TEXT NOT NULL DEFAULT ''");
+}
+
+const exitPinColumns = sqlite.prepare("PRAGMA table_info(exit_pins)").all() as Array<{ name: string }>;
+if (!exitPinColumns.some((c) => c.name === "pin_code")) {
+  sqlite.exec("ALTER TABLE exit_pins ADD COLUMN pin_code TEXT NOT NULL DEFAULT ''");
+}
+export const db = drizzle(sqlite);
 
 export class DatabaseStorage {
   async getMenuCategories(): Promise<MenuCategory[]> {
     return db.select().from(menuCategories).orderBy(asc(menuCategories.sortOrder));
   }
   async getMenuItems(): Promise<MenuItem[]> {
-    return db.select().from(menuItems).orderBy(asc(menuItems.sortOrder));
+    const items = await db.select().from(menuItems).orderBy(asc(menuItems.sortOrder));
+    return items.map(item => ({ ...item, variants: JSON.parse(item.variants), addons: JSON.parse(item.addons) }));
   }
   async getMenuItemsByCategory(categoryId: number): Promise<MenuItem[]> {
-    return db.select().from(menuItems).where(eq(menuItems.categoryId, categoryId)).orderBy(asc(menuItems.sortOrder));
+    const items = await db.select().from(menuItems).where(eq(menuItems.categoryId, categoryId)).orderBy(asc(menuItems.sortOrder));
+    return items.map(item => ({ ...item, variants: JSON.parse(item.variants), addons: JSON.parse(item.addons) }));
   }
   async getMenuItemById(id: number): Promise<MenuItem | undefined> {
     const [item] = await db.select().from(menuItems).where(eq(menuItems.id, id));
-    return item;
+    if (item) {
+      return { ...item, variants: JSON.parse(item.variants), addons: JSON.parse(item.addons) };
+    }
+    return undefined;
   }
   async createMenuCategory(cat: InsertMenuCategory): Promise<MenuCategory> {
     const [created] = await db.insert(menuCategories).values(cat).returning();
     return created;
   }
   async createMenuItem(item: InsertMenuItem): Promise<MenuItem> {
-    const [created] = await db.insert(menuItems).values(item).returning();
-    return created;
+    const itemToInsert = { ...item, variants: JSON.stringify(item.variants), addons: JSON.stringify(item.addons) };
+    const [created] = await db.insert(menuItems).values(itemToInsert).returning();
+    return { ...created, variants: JSON.parse(created.variants), addons: JSON.parse(created.addons) };
   }
   async updateMenuItem(id: number, item: Partial<InsertMenuItem>): Promise<MenuItem | undefined> {
-    const [updated] = await db.update(menuItems).set(item).where(eq(menuItems.id, id)).returning();
-    return updated;
+    const itemToUpdate = { ...item };
+    if (item.variants) itemToUpdate.variants = JSON.stringify(item.variants);
+    if (item.addons) itemToUpdate.addons = JSON.stringify(item.addons);
+    const [updated] = await db.update(menuItems).set(itemToUpdate).where(eq(menuItems.id, id)).returning();
+    if (updated) {
+      return { ...updated, variants: JSON.parse(updated.variants), addons: JSON.parse(updated.addons) };
+    }
+    return undefined;
   }
   async deleteMenuItem(id: number): Promise<boolean> {
     const result = await db.delete(menuItems).where(eq(menuItems.id, id)).returning();
@@ -56,6 +100,10 @@ export class DatabaseStorage {
   }
   async getTableByNumber(tableNumber: number): Promise<RestaurantTable | undefined> {
     const [table] = await db.select().from(restaurantTables).where(eq(restaurantTables.tableNumber, tableNumber));
+    return table;
+  }
+  async getTableById(id: number): Promise<RestaurantTable | undefined> {
+    const [table] = await db.select().from(restaurantTables).where(eq(restaurantTables.id, id));
     return table;
   }
   async createTable(table: InsertTable): Promise<RestaurantTable> {
@@ -150,6 +198,29 @@ export class DatabaseStorage {
   }
   async updateExitToken(id: number, data: Partial<InsertExitToken>): Promise<ExitToken | undefined> {
     const [updated] = await db.update(exitTokens).set(data).where(eq(exitTokens.id, id)).returning();
+    return updated;
+  }
+
+  async createExitPin(pin: InsertExitPin): Promise<ExitPin> {
+    const [created] = await db.insert(exitPins).values(pin).returning();
+    return created;
+  }
+  async getLatestExitPinByTable(tableId: number): Promise<ExitPin | undefined> {
+    const [pin] = await db.select().from(exitPins).where(eq(exitPins.tableId, tableId)).orderBy(desc(exitPins.createdAt));
+    return pin;
+  }
+  async getActiveExitPinsByTable(tableId: number): Promise<ExitPin[]> {
+    return db.select().from(exitPins)
+      .where(and(eq(exitPins.tableId, tableId), eq(exitPins.status, "active")))
+      .orderBy(desc(exitPins.createdAt));
+  }
+  async expireActiveExitPinsByTable(tableId: number): Promise<void> {
+    await db.update(exitPins)
+      .set({ status: "expired" })
+      .where(and(eq(exitPins.tableId, tableId), eq(exitPins.status, "active")));
+  }
+  async updateExitPin(id: number, data: Partial<InsertExitPin>): Promise<ExitPin | undefined> {
+    const [updated] = await db.update(exitPins).set(data).where(eq(exitPins.id, id)).returning();
     return updated;
   }
 

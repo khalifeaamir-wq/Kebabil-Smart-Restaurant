@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetHeader } from "@/components/ui/sheet";
-import { Menu, ShieldCheck } from "lucide-react";
+import { Menu } from "lucide-react";
 import { motion } from "framer-motion";
 import logoImg from "@assets/468146293_3917545001849558_7757020803682063832_n-removebg-prev_1772140405610.png";
 import { OrderDialog } from "./OrderDialog";
@@ -47,7 +47,6 @@ export function Navbar() {
           <button onClick={() => scrollTo("signature")} className="text-xs uppercase tracking-widest text-foreground/70 hover:text-primary transition-colors">Signatures</button>
           <button onClick={() => scrollTo("menu")} className="text-xs uppercase tracking-widest text-foreground/70 hover:text-primary transition-colors">Menu</button>
           <button onClick={() => scrollTo("contact")} className="text-xs uppercase tracking-widest text-foreground/70 hover:text-primary transition-colors">Contact</button>
-          <a href="/admin" className="text-xs uppercase tracking-widest text-foreground/70 hover:text-primary transition-colors flex items-center gap-1.5"><ShieldCheck className="w-3.5 h-3.5" />Staff</a>
         </div>
 
         <div className="flex items-center gap-4">
@@ -73,7 +72,6 @@ export function Navbar() {
                 <button onClick={() => scrollTo("signature")} className="text-left text-sm uppercase tracking-widest text-white hover:text-primary transition-colors">Signatures</button>
                 <button onClick={() => scrollTo("menu")} className="text-left text-sm uppercase tracking-widest text-white hover:text-primary transition-colors">Menu</button>
                 <button onClick={() => scrollTo("contact")} className="text-left text-sm uppercase tracking-widest text-white hover:text-primary transition-colors">Contact</button>
-                <a href="/admin" className="text-left text-sm uppercase tracking-widest text-white hover:text-primary transition-colors flex items-center gap-2"><ShieldCheck className="w-4 h-4" />Staff Portal</a>
               </div>
             </SheetContent>
           </Sheet>

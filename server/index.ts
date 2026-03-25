@@ -1,10 +1,12 @@
 import express, { type Request, Response, NextFunction } from "express";
 import session from "express-session";
-import connectPgSimple from "connect-pg-simple";
+import SQLiteStore from "connect-sqlite3";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
 import crypto from "crypto";
+import path from "path";
+import { fileURLToPath } from "url";
 
 const app = express();
 const httpServer = createServer(app);
@@ -33,14 +35,12 @@ app.use(
 
 app.use(express.urlencoded({ extended: false }));
 
-const PgSession = connectPgSimple(session);
+const SqliteStore = SQLiteStore(session);
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const sessionSecret = process.env.SESSION_SECRET || crypto.randomBytes(32).toString("hex");
 app.use(
   session({
-    store: new PgSession({
-      conString: process.env.DATABASE_URL,
-      createTableIfMissing: true,
-    }),
+    store: new SqliteStore({ db: 'sessions.db', dir: __dirname }),
     secret: sessionSecret,
     resave: false,
     saveUninitialized: false,
@@ -128,8 +128,7 @@ app.use((req, res, next) => {
   httpServer.listen(
     {
       port,
-      host: "0.0.0.0",
-      reusePort: true,
+      host: "127.0.0.1",
     },
     () => {
       log(`serving on port ${port}`);

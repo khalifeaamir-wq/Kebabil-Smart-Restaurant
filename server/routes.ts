@@ -26,6 +26,73 @@ function generateOrderNumber(): string {
   return `K-${ts}${rand}`;
 }
 
+const QR_ROTATION_ID = "qr-v2-2026-03-18";
+const qrSecret = process.env.QR_SECRET || process.env.SESSION_SECRET || "kebabil-qr-secret";
+const pinSecret = process.env.PIN_SECRET || process.env.SESSION_SECRET || "kebabil-pin-secret";
+
+function buildQrToken(tableId: number): string {
+  return crypto.createHmac("sha256", qrSecret).update(`${tableId}:${QR_ROTATION_ID}`).digest("hex").slice(0, 24);
+}
+
+function isValidQrToken(tableId: number, token: string): boolean {
+  const expected = buildQrToken(tableId);
+  if (token.length !== expected.length) return false;
+  return crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(token));
+}
+
+function getPublicBaseUrl(req: Request): string {
+  const protoHeader = req.headers["x-forwarded-proto"];
+  const hostHeader = req.headers["x-forwarded-host"] || req.headers.host;
+  const proto = Array.isArray(protoHeader) ? protoHeader[0] : protoHeader || req.protocol || "http";
+  const host = Array.isArray(hostHeader) ? hostHeader[0] : hostHeader || "localhost:5000";
+  return `${proto}://${host}`;
+}
+
+function normalizeUnitPrice(priceValue: unknown, priceLabel?: string): number {
+  const cleaned = (priceLabel || "").replace(/[^\d.]/g, "");
+  const parsedLabel = cleaned ? Number.parseFloat(cleaned) : NaN;
+  const labelPaise = Number.isFinite(parsedLabel) && parsedLabel >= 0 ? Math.round(parsedLabel * 100) : 0;
+  if (labelPaise > 0) return labelPaise;
+
+  const numericPriceValue = Number(priceValue);
+  if (!Number.isFinite(numericPriceValue) || numericPriceValue < 0) return 0;
+  if (numericPriceValue > 0 && numericPriceValue < 1000) return Math.round(numericPriceValue * 100);
+  return Math.round(numericPriceValue);
+}
+
+function hashPin(pin: string): string {
+  return crypto.createHmac("sha256", pinSecret).update(pin).digest("hex");
+}
+
+function generate4DigitPin(): string {
+  return crypto.randomInt(0, 10000).toString().padStart(4, "0");
+}
+
+const UPI_MERCHANT_ID = process.env.UPI_MERCHANT_ID || "kebabil@upi";
+const UPI_MERCHANT_NAME = process.env.UPI_MERCHANT_NAME || "Kebabil";
+
+type BillSummary = {
+  subtotal: number;
+  tax: number;
+  total: number;
+};
+
+function sanitizeTxnNote(note: string): string {
+  return note.replace(/[^\w\-:/ ]/g, "").slice(0, 70);
+}
+
+function buildUpiUri(args: { pa: string; pn: string; am: number; tn: string; tr: string }): string {
+  const params = new URLSearchParams({
+    pa: args.pa.trim(),
+    pn: args.pn.trim(),
+    am: (Math.max(0, args.am) / 100).toFixed(2),
+    cu: "INR",
+    tn: sanitizeTxnNote(args.tn),
+    tr: args.tr,
+  });
+  return `upi://pay?${params.toString()}`;
+}
+
 export async function registerRoutes(
   httpServer: Server,
   app: Express
@@ -123,7 +190,7 @@ export async function registerRoutes(
             name: item.name,
             description: item.description,
             price: item.price,
-            priceValue: item.priceValue,
+            priceValue: normalizeUnitPrice(item.priceValue, item.price),
             variants: item.variants,
             addons: item.addons,
             badge: item.badge,
@@ -166,7 +233,7 @@ export async function registerRoutes(
 
   app.patch("/api/menu/items/:id", async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = Number(req.params.id);
       const updated = await storage.updateMenuItem(id, req.body);
       if (!updated) {
         res.status(404).json({ message: "Menu item not found" });
@@ -213,14 +280,74 @@ export async function registerRoutes(
     }
   });
 
-  // ===== TABLE SCAN (Customer entry point) =====
-  app.post("/api/table/:tableNumber/scan", async (req, res) => {
+  // ===== QR ROUTES =====
+  app.get("/api/qr/tables", requireAdmin, async (req, res) => {
     try {
-      const tableNumber = parseInt(req.params.tableNumber);
-      let table = await storage.getTableByNumber(tableNumber);
+      const baseUrl = getPublicBaseUrl(req);
+      const tables = await storage.getTables();
+      res.json(
+        tables.map((table) => {
+          const token = buildQrToken(table.id);
+          return {
+            tableId: table.id,
+            tableNumber: table.tableNumber,
+            scanPath: `/t/${table.id}/${token}`,
+            scanUrl: `${baseUrl}/t/${table.id}/${token}`,
+          };
+        })
+      );
+    } catch (error) {
+      res.status(500).json({ message: "Failed to generate QR mappings" });
+    }
+  });
 
+  app.get("/api/qr/resolve/:tableNumber", async (req, res) => {
+    try {
+      const tableNumber = Number(req.params.tableNumber);
+      if (!Number.isFinite(tableNumber) || tableNumber <= 0) {
+        res.status(400).json({ message: "Invalid table number" });
+        return;
+      }
+
+      const table = await storage.getTableByNumber(tableNumber);
       if (!table) {
-        table = await storage.createTable({ tableNumber, status: "available" });
+        res.status(404).json({ message: "Table not found" });
+        return;
+      }
+
+      const token = buildQrToken(table.id);
+      const scanPath = `/t/${table.id}/${token}`;
+      const baseUrl = getPublicBaseUrl(req);
+      res.json({
+        tableId: table.id,
+        tableNumber: table.tableNumber,
+        token,
+        scanPath,
+        scanUrl: `${baseUrl}${scanPath}`,
+      });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to resolve table QR" });
+    }
+  });
+
+  app.post("/api/qr/scan", async (req, res) => {
+    try {
+      const tableId = Number(req.body?.tableId);
+      const token = String(req.body?.token || "");
+
+      if (!Number.isFinite(tableId) || tableId <= 0 || !token) {
+        res.status(400).json({ message: "Invalid QR payload" });
+        return;
+      }
+      if (!isValidQrToken(tableId, token)) {
+        res.status(403).json({ message: "QR code is invalid or expired" });
+        return;
+      }
+
+      const table = await storage.getTableById(tableId);
+      if (!table) {
+        res.status(404).json({ message: "Table not found" });
+        return;
       }
 
       let session = await storage.getActiveSessionForTable(table.id);
@@ -235,12 +362,60 @@ export async function registerRoutes(
         await storage.updateTable(table.id, { status: "occupied", activeSessionId: session.id });
       }
 
+      let tableStatus = table.status;
+      if (table.activeSessionId !== session.id || table.status !== "occupied") {
+        await storage.updateTable(table.id, { status: "occupied", activeSessionId: session.id });
+        tableStatus = "occupied";
+      }
+
       res.json({
-        table: { id: table.id, tableNumber: table.tableNumber, status: table.status },
+        table: { id: table.id, tableNumber: table.tableNumber, status: tableStatus },
         session: { id: session.id, sessionCode: session.sessionCode, status: session.status },
+        qr: { tableId, token, rotation: QR_ROTATION_ID },
       });
     } catch (error) {
-      console.error("Error scanning table:", error);
+      console.error("Error scanning QR:", error);
+      res.status(500).json({ message: "Failed to process table scan" });
+    }
+  });
+
+  // Legacy endpoint retained as compatibility bridge to signed flow.
+  app.post("/api/table/:tableNumber/scan", async (req, res) => {
+    try {
+      const tableNumber = Number(req.params.tableNumber);
+      if (!Number.isFinite(tableNumber) || tableNumber <= 0) {
+        res.status(400).json({ message: "Invalid table number" });
+        return;
+      }
+      const table = await storage.getTableByNumber(tableNumber);
+      if (!table) {
+        res.status(404).json({ message: "Table not found" });
+        return;
+      }
+
+      let session = await storage.getActiveSessionForTable(table.id);
+      if (!session) {
+        const sessionCode = generateSessionCode();
+        session = await storage.createSession({
+          tableId: table.id,
+          sessionCode,
+          status: "active",
+        });
+      }
+
+      let tableStatus = table.status;
+      if (table.activeSessionId !== session.id || table.status !== "occupied") {
+        await storage.updateTable(table.id, { status: "occupied", activeSessionId: session.id });
+        tableStatus = "occupied";
+      }
+
+      const token = buildQrToken(table.id);
+      res.json({
+        table: { id: table.id, tableNumber: table.tableNumber, status: tableStatus },
+        session: { id: session.id, sessionCode: session.sessionCode, status: session.status },
+        qr: { tableId: table.id, token, rotation: QR_ROTATION_ID, bridged: true },
+      });
+    } catch (error) {
       res.status(500).json({ message: "Failed to process table scan" });
     }
   });
@@ -269,6 +444,12 @@ export async function registerRoutes(
         return;
       }
 
+      const session = await storage.getSessionById(Number(sessionId));
+      if (!session || session.tableId !== Number(tableId) || session.status !== "active") {
+        res.status(400).json({ message: "Invalid or inactive table session" });
+        return;
+      }
+
       let subtotal = 0;
       const resolvedItems: Array<{
         menuItemId: number;
@@ -286,13 +467,15 @@ export async function registerRoutes(
           res.status(400).json({ message: `Menu item ${item.menuItemId} not found` });
           return;
         }
-        const unitPrice = menuItem.priceValue;
-        const totalPrice = unitPrice * item.quantity;
+        const quantity = Number(item.quantity);
+        const safeQuantity = Number.isFinite(quantity) && quantity > 0 ? Math.floor(quantity) : 1;
+        const unitPrice = normalizeUnitPrice(menuItem.priceValue, menuItem.price);
+        const totalPrice = unitPrice * safeQuantity;
         subtotal += totalPrice;
         resolvedItems.push({
           menuItemId: menuItem.id,
           menuItemName: menuItem.name,
-          quantity: item.quantity,
+          quantity: safeQuantity,
           unitPrice,
           totalPrice,
           itemNote: item.itemNote || "",
@@ -348,6 +531,11 @@ export async function registerRoutes(
   app.get("/api/orders/session/:sessionId", async (req, res) => {
     try {
       const sessionId = parseInt(req.params.sessionId);
+      const session = await storage.getSessionById(sessionId);
+      if (!session) {
+        res.status(404).json({ message: "Session not found" });
+        return;
+      }
       const sessionOrders = await storage.getOrdersBySession(sessionId);
       const ordersWithItems = await Promise.all(
         sessionOrders.map(async (order) => {
@@ -363,8 +551,8 @@ export async function registerRoutes(
 
   app.patch("/api/orders/:id/status", requireAdmin, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
-      const { status } = req.body;
+      const id = Number(req.params.id);
+      const status = String(req.body?.status || "");
       const validStatuses = ["new", "accepted", "preparing", "ready", "served"];
       if (!validStatuses.includes(status)) {
         res.status(400).json({ message: "Invalid status" });
@@ -385,47 +573,250 @@ export async function registerRoutes(
   });
 
   // ===== PAYMENT ROUTES =====
+  const getSessionBillingSnapshot = async (sessionId: number) => {
+    const session = await storage.getSessionById(sessionId);
+    if (!session) return null;
+
+    const sessionOrders = await storage.getOrdersBySession(sessionId);
+    const ordersWithItems = await Promise.all(
+      sessionOrders.map(async (order) => {
+        const items = await storage.getOrderItemsByOrder(order.id);
+        return { ...order, items };
+      })
+    );
+
+    const bill: BillSummary = {
+      subtotal: sessionOrders.reduce((sum, o) => sum + o.subtotal, 0),
+      tax: sessionOrders.reduce((sum, o) => sum + o.tax, 0),
+      total: sessionOrders.reduce((sum, o) => sum + o.total, 0),
+    };
+
+    const payments = await storage.getPaymentsBySession(sessionId);
+    const completedPayment = payments.find((p) => p.paymentStatus === "completed");
+
+    return {
+      session,
+      sessionOrders,
+      ordersWithItems,
+      bill,
+      payments,
+      isPaid: Boolean(completedPayment),
+      completedPayment,
+    };
+  };
+
+  const buildPendingPaymentSummary = async (payment: any) => {
+    const snapshot = await getSessionBillingSnapshot(payment.sessionId);
+    if (!snapshot) return null;
+    const table = await storage.getTableById(snapshot.session.tableId);
+    const primaryOrder = snapshot.sessionOrders[0];
+    return {
+      paymentId: payment.id,
+      sessionId: snapshot.session.id,
+      tableId: snapshot.session.tableId,
+      tableNumber: table?.tableNumber || snapshot.session.tableId,
+      orderId: primaryOrder?.id || null,
+      orderNumber: primaryOrder?.orderNumber || "",
+      amount: payment.amount,
+      paymentMethod: payment.paymentMethod,
+      paymentStatus: payment.paymentStatus,
+      transactionRef: payment.transactionRef,
+      createdAt: payment.createdAt,
+    };
+  };
+
+  const confirmPaymentAndIssuePin = async (paymentId: number, verifier: { adminId: number; name: string }, transactionRefInput?: string) => {
+    const paymentRecord = await storage.getPaymentById(paymentId);
+    if (!paymentRecord) return { error: { status: 404, message: "Payment not found" } };
+    if (paymentRecord.paymentStatus === "completed") return { error: { status: 409, message: "Payment already completed" } };
+
+    const snapshot = await getSessionBillingSnapshot(paymentRecord.sessionId);
+    if (!snapshot) return { error: { status: 404, message: "Session not found" } };
+    if (snapshot.sessionOrders.length === 0 || snapshot.bill.total <= 0) {
+      return { error: { status: 400, message: "No valid order found for payment" } };
+    }
+    if (snapshot.completedPayment && snapshot.completedPayment.id !== paymentRecord.id) {
+      return { error: { status: 409, message: "Session already paid" } };
+    }
+    if (paymentRecord.amount !== snapshot.bill.total) {
+      return { error: { status: 409, message: "Payment amount mismatch. Regenerate payment link." } };
+    }
+
+    const paymentMethod = paymentRecord.paymentMethod || "cash";
+    const transactionRef = String(transactionRefInput || paymentRecord.transactionRef || `${paymentMethod.toUpperCase()}-${Date.now()}`);
+    const payment = await storage.updatePayment(paymentId, {
+      paymentStatus: "completed",
+      transactionRef,
+      verifiedByAdminId: verifier.adminId,
+      verifiedByName: verifier.name,
+      paidAt: new Date(),
+    });
+    if (!payment) return { error: { status: 404, message: "Payment not found" } };
+
+    await storage.updateSession(payment.sessionId, { status: "paid" });
+
+    const order = snapshot.sessionOrders[0];
+    const pin = generate4DigitPin();
+    const expiresAt = new Date(Date.now() + 7 * 60 * 1000);
+    await storage.expireActiveExitPinsByTable(snapshot.session.tableId);
+    const exitPin = await storage.createExitPin({
+      orderId: order.id,
+      tableId: snapshot.session.tableId,
+      paymentId: payment.id,
+      pinHash: hashPin(pin),
+      pinCode: pin,
+      status: "active",
+      expiresAt,
+      maxAttempts: 5,
+    });
+
+    broadcast("payment_complete", {
+      sessionId: payment.sessionId,
+      paymentId: payment.id,
+      tableId: snapshot.session.tableId,
+      exitPinId: exitPin.id,
+    });
+
+    return {
+      payment,
+      exitPin: {
+        id: exitPin.id,
+        orderId: exitPin.orderId,
+        tableId: exitPin.tableId,
+        pin,
+        status: exitPin.status,
+        expiresAt: exitPin.expiresAt,
+      },
+    };
+  };
+
   app.get("/api/session/:sessionId/bill", async (req, res) => {
     try {
       const sessionId = parseInt(req.params.sessionId);
-      const session = await storage.getSessionById(sessionId);
-      if (!session) { res.status(404).json({ message: "Session not found" }); return; }
-
-      const sessionOrders = await storage.getOrdersBySession(sessionId);
-      const ordersWithItems = await Promise.all(
-        sessionOrders.map(async (order) => {
-          const items = await storage.getOrderItemsByOrder(order.id);
-          return { ...order, items };
-        })
-      );
-
-      const subtotal = sessionOrders.reduce((sum, o) => sum + o.subtotal, 0);
-      const tax = sessionOrders.reduce((sum, o) => sum + o.tax, 0);
-      const total = sessionOrders.reduce((sum, o) => sum + o.total, 0);
-
-      const existingPayments = await storage.getPaymentsBySession(sessionId);
-      const isPaid = existingPayments.some(p => p.paymentStatus === "completed");
+      const snapshot = await getSessionBillingSnapshot(sessionId);
+      if (!snapshot) {
+        res.status(404).json({ message: "Session not found" });
+        return;
+      }
 
       res.json({
-        session,
-        orders: ordersWithItems,
-        bill: { subtotal, tax, total },
-        isPaid,
-        payments: existingPayments,
+        session: snapshot.session,
+        orders: snapshot.ordersWithItems,
+        bill: snapshot.bill,
+        isPaid: snapshot.isPaid,
+        payments: snapshot.payments,
       });
     } catch (error) {
       res.status(500).json({ message: "Failed to generate bill" });
     }
   });
 
+  app.get("/api/session/:sessionId/payment/upi", async (req, res) => {
+    try {
+      const sessionId = parseInt(req.params.sessionId);
+      const snapshot = await getSessionBillingSnapshot(sessionId);
+      if (!snapshot) {
+        res.status(404).json({ message: "Session not found" });
+        return;
+      }
+      if (snapshot.sessionOrders.length === 0 || snapshot.bill.total <= 0) {
+        res.status(400).json({ message: "No valid order found for payment" });
+        return;
+      }
+      if (snapshot.isPaid) {
+        res.status(409).json({ message: "Session already paid" });
+        return;
+      }
+
+      const latestOrder = snapshot.sessionOrders[0];
+      const note = `ORDER-${latestOrder.orderNumber}`;
+      const paymentIntentRef = `UPI-INTENT-${snapshot.session.id}-${Date.now()}`;
+      const pendingUpi = snapshot.payments.find(
+        (p) =>
+          p.paymentStatus !== "completed" &&
+          p.paymentMethod === "upi" &&
+          p.amount === snapshot.bill.total
+      );
+      const paymentRecord = pendingUpi
+        ? pendingUpi
+        : await storage.createPayment({
+            sessionId: snapshot.session.id,
+            amount: snapshot.bill.total,
+            paymentMethod: "upi",
+            paymentStatus: "pending_verification",
+            transactionRef: paymentIntentRef,
+          });
+      const upiUri = buildUpiUri({
+        pa: UPI_MERCHANT_ID,
+        pn: UPI_MERCHANT_NAME,
+        am: snapshot.bill.total,
+        tn: note,
+        tr: `TXN-${paymentRecord.id}-${snapshot.session.id}`,
+      });
+
+      res.json({
+        paymentId: paymentRecord.id,
+        sessionId: snapshot.session.id,
+        amountPaise: snapshot.bill.total,
+        amount: (snapshot.bill.total / 100).toFixed(2),
+        merchantUpiId: UPI_MERCHANT_ID,
+        merchantName: UPI_MERCHANT_NAME,
+        note,
+        upiUri,
+        deepLink: upiUri,
+        verificationStatus: paymentRecord.paymentStatus,
+      });
+    } catch (error) {
+      console.error("Error generating UPI payment data:", error);
+      res.status(500).json({ message: "Failed to generate UPI payment link" });
+    }
+  });
+
   app.post("/api/payments", async (req, res) => {
     try {
-      const { sessionId, amount, paymentMethod } = req.body;
+      const sessionId = Number(req.body?.sessionId);
+      const paymentMethod = String(req.body?.paymentMethod || "upi").toLowerCase();
+      const validMethods = ["cash", "card", "upi"];
+      if (!Number.isFinite(sessionId) || sessionId <= 0) {
+        res.status(400).json({ message: "Invalid session" });
+        return;
+      }
+      if (!validMethods.includes(paymentMethod)) {
+        res.status(400).json({ message: "Invalid payment method" });
+        return;
+      }
+      const snapshot = await getSessionBillingSnapshot(sessionId);
+      if (!snapshot) {
+        res.status(404).json({ message: "Session not found" });
+        return;
+      }
+      if (snapshot.sessionOrders.length === 0 || snapshot.bill.total <= 0) {
+        res.status(400).json({ message: "No valid order found for payment" });
+        return;
+      }
+      if (snapshot.isPaid) {
+        res.status(409).json({ message: "Session already paid" });
+        return;
+      }
+
+      const existingPending = snapshot.payments.find((p) => p.paymentStatus !== "completed");
+      if (existingPending) {
+        const updatedPending = await storage.updatePayment(existingPending.id, {
+          amount: snapshot.bill.total,
+          paymentMethod,
+          paymentStatus: "pending_verification",
+          transactionRef: existingPending.transactionRef || `${paymentMethod.toUpperCase()}-INTENT-${Date.now()}`,
+        });
+        res.status(200).json(updatedPending);
+        return;
+      }
+
       const payment = await storage.createPayment({
         sessionId,
-        amount,
-        paymentMethod: paymentMethod || "upi",
-        paymentStatus: "pending",
+        amount: snapshot.bill.total,
+        paymentMethod,
+        paymentStatus: "pending_verification",
+        transactionRef: `${paymentMethod.toUpperCase()}-INTENT-${Date.now()}`,
       });
       res.status(201).json(payment);
     } catch (error) {
@@ -433,117 +824,238 @@ export async function registerRoutes(
     }
   });
 
-  app.patch("/api/payments/:id/complete", async (req, res) => {
+  app.get("/api/session/:sessionId/exit-pin", async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
-      const { paymentMethod, transactionRef } = req.body;
-
-      const payment = await storage.updatePayment(id, {
-        paymentStatus: "completed",
-        paymentMethod: paymentMethod || "cash",
-        transactionRef: transactionRef || `CASH-${Date.now()}`,
-        paidAt: new Date(),
+      const sessionId = Number(req.params.sessionId);
+      const session = await storage.getSessionById(sessionId);
+      if (!session) {
+        res.status(404).json({ message: "Session not found" });
+        return;
+      }
+      const pins = await storage.getActiveExitPinsByTable(session.tableId);
+      const latestPin = pins[0];
+      if (!latestPin) {
+        res.status(404).json({ message: "Exit PIN not available yet" });
+        return;
+      }
+      res.json({
+        id: latestPin.id,
+        orderId: latestPin.orderId,
+        tableId: latestPin.tableId,
+        pin: latestPin.pinCode,
+        status: latestPin.status,
+        expiresAt: latestPin.expiresAt,
       });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch exit PIN" });
+    }
+  });
 
-      if (!payment) { res.status(404).json({ message: "Payment not found" }); return; }
+  app.get("/api/waiter/payments/pending", requireAdmin, async (_req, res) => {
+    try {
+      const allPayments = await storage.getAllPayments();
+      const pendingPayments = allPayments
+        .filter((p) => p.paymentStatus !== "completed")
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      const seenSessions = new Set<number>();
+      const result: Array<{
+        paymentId: number;
+        sessionId: number;
+        tableId: number;
+        tableNumber: number;
+        orderId: number | null;
+        orderNumber: string;
+        amount: number;
+        paymentMethod: string;
+        paymentStatus: string;
+        transactionRef: string;
+        createdAt: Date;
+      }> = [];
+      for (const payment of pendingPayments) {
+        if (seenSessions.has(payment.sessionId)) continue;
+        seenSessions.add(payment.sessionId);
+        const summary = await buildPendingPaymentSummary(payment);
+        if (!summary) continue;
+        result.push(summary);
+      }
+      res.json(result.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch pending payments" });
+    }
+  });
 
-      await storage.updateSession(payment.sessionId, { status: "paid" });
+  app.patch("/api/waiter/payments/:id/confirm", requireAdmin, async (req, res) => {
+    try {
+      const id = Number(req.params.id);
+      const adminId = req.session.adminId;
+      if (!adminId) {
+        res.status(401).json({ message: "Unauthorized" });
+        return;
+      }
+      const verifier = {
+        adminId,
+        name: req.session.adminUsername || "waiter",
+      };
+      const result = await confirmPaymentAndIssuePin(id, verifier, req.body?.transactionRef);
+      if ((result as any).error) {
+        const err = (result as any).error as { status: number; message: string };
+        res.status(err.status).json({ message: err.message });
+        return;
+      }
+      res.json(result);
+    } catch (error) {
+      console.error("Error confirming payment:", error);
+      res.status(500).json({ message: "Failed to confirm payment" });
+    }
+  });
 
-      const expiresAt = new Date(Date.now() + 3 * 60 * 1000);
-      const tokenHash = crypto.randomBytes(32).toString("hex");
-      const exitToken = await storage.createExitToken({
-        sessionId: payment.sessionId,
-        paymentId: payment.id,
-        tokenHash,
-        expiresAt,
-      });
-
-      broadcast("payment_complete", { sessionId: payment.sessionId, paymentId: payment.id });
-
-      res.json({ payment, exitToken });
+  app.patch("/api/payments/:id/complete", requireAdmin, async (req, res) => {
+    try {
+      const id = Number(req.params.id);
+      const adminId = req.session.adminId;
+      if (!adminId) {
+        res.status(401).json({ message: "Unauthorized" });
+        return;
+      }
+      const verifier = {
+        adminId,
+        name: req.session.adminUsername || "waiter",
+      };
+      const result = await confirmPaymentAndIssuePin(id, verifier, req.body?.transactionRef);
+      if ((result as any).error) {
+        const err = (result as any).error as { status: number; message: string };
+        res.status(err.status).json({ message: err.message });
+        return;
+      }
+      res.json(result);
     } catch (error) {
       console.error("Error completing payment:", error);
       res.status(500).json({ message: "Failed to complete payment" });
     }
   });
 
-  // ===== EXIT TOKEN ROUTES =====
-  app.get("/api/exit-token/:sessionId", async (req, res) => {
+  // ===== EXIT PIN ROUTES =====
+  app.post("/api/exit-pin/verify", async (req, res) => {
     try {
-      const sessionId = parseInt(req.params.sessionId);
-      const token = await storage.getExitTokenBySession(sessionId);
-      if (!token) { res.status(404).json({ message: "No exit token found" }); return; }
+      const pin = String(req.body?.pin || "").trim();
+      const tableNumber = Number(req.body?.tableNumber);
 
-      const isExpired = new Date() > new Date(token.expiresAt);
-      res.json({ ...token, isExpired });
-    } catch (error) {
-      res.status(500).json({ message: "Failed to fetch exit token" });
-    }
-  });
-
-  app.post("/api/exit-token/verify", async (req, res) => {
-    try {
-      const { token: tokenValue, tokenHash: tokenHashValue } = req.body;
-      const lookupHash = tokenValue || tokenHashValue;
-      if (!lookupHash) {
-        res.status(400).json({ valid: false, reason: "Token required" });
+      if (!/^\d{4}$/.test(pin)) {
+        res.status(400).json({ valid: false, reason: "invalid_pin" });
         return;
       }
-      const token = await storage.getExitTokenByHash(lookupHash);
-
-      if (!token) {
-        await storage.createDoorAccessLog({ exitTokenId: 0, result: "failed", reason: "Token not found" });
-        res.status(400).json({ valid: false, reason: "Invalid token" });
+      if (!Number.isFinite(tableNumber) || tableNumber <= 0) {
+        res.status(400).json({ valid: false, reason: "invalid_table" });
         return;
       }
 
-      if (token.isUsed) {
-        await storage.createDoorAccessLog({ exitTokenId: token.id, result: "failed", reason: "Token already used" });
-        res.status(400).json({ valid: false, reason: "Token already used" });
+      const table = await storage.getTableByNumber(tableNumber);
+      if (!table) {
+        res.status(404).json({ valid: false, reason: "invalid_table" });
         return;
       }
 
-      if (new Date() > new Date(token.expiresAt)) {
-        await storage.createDoorAccessLog({ exitTokenId: token.id, result: "failed", reason: "Token expired" });
-        res.status(400).json({ valid: false, reason: "Token expired" });
-        return;
-      }
+      const activePins = await storage.getActiveExitPinsByTable(table.id);
+      const now = new Date();
 
-      await storage.updateExitToken(token.id, { isUsed: true, usedAt: new Date() });
-      await storage.createDoorAccessLog({ exitTokenId: token.id, result: "success" });
-
-      const session = await storage.getSessionById(token.sessionId);
-      if (session) {
-        await storage.updateSession(session.id, { status: "exited", closedAt: new Date() });
-        const table = await storage.getTableByNumber(session.tableId);
-        if (table) {
-          await storage.updateTable(table.id, { status: "available", activeSessionId: null });
+      for (const p of activePins) {
+        if (now > new Date(p.expiresAt)) {
+          await storage.updateExitPin(p.id, { status: "expired" });
         }
       }
 
-      broadcast("exit_verified", { sessionId: token.sessionId, tokenId: token.id });
+      const refreshedPins = (await storage.getActiveExitPinsByTable(table.id))
+        .filter((p) => now <= new Date(p.expiresAt));
+      const pinHash = hashPin(pin);
+
+      const matched = refreshedPins.find((p) =>
+        crypto.timingSafeEqual(Buffer.from(p.pinHash), Buffer.from(pinHash))
+      );
+
+      if (!matched) {
+        const latest = await storage.getLatestExitPinByTable(table.id);
+        if (latest && latest.status === "active") {
+          const attempts = (latest.attempts || 0) + 1;
+          const exceeded = attempts >= (latest.maxAttempts || 5);
+          await storage.updateExitPin(latest.id, {
+            attempts,
+            status: exceeded ? "expired" : latest.status,
+          });
+        }
+        res.status(400).json({ valid: false, reason: "invalid_pin" });
+        return;
+      }
+
+      if (matched.status === "used") {
+        res.status(400).json({ valid: false, reason: "already_used" });
+        return;
+      }
+      if (now > new Date(matched.expiresAt)) {
+        await storage.updateExitPin(matched.id, { status: "expired" });
+        res.status(400).json({ valid: false, reason: "expired" });
+        return;
+      }
+
+      const payment = await storage.getPaymentById(matched.paymentId);
+      if (!payment || payment.paymentStatus !== "completed") {
+        res.status(400).json({ valid: false, reason: "payment_incomplete" });
+        return;
+      }
+
+      await storage.updateExitPin(matched.id, { status: "used", usedAt: now });
+
+      const session = await storage.getSessionById(payment.sessionId);
+      if (session) {
+        await storage.updateSession(session.id, { status: "exited", closedAt: now });
+      }
+      await storage.updateTable(table.id, { status: "available", activeSessionId: null });
+
+      broadcast("exit_verified", { tableId: table.id, orderId: matched.orderId, exitPinId: matched.id });
 
       res.json({
         valid: true,
-        message: "Exit authorized. Door unlocked.",
-        sessionId: token.sessionId,
-        tableNumber: session?.tableId || null,
+        message: "door_unlocked",
+        orderId: matched.orderId,
+        tableNumber: table.tableNumber,
       });
     } catch (error) {
-      res.status(500).json({ message: "Failed to verify exit token" });
+      res.status(500).json({ valid: false, reason: "server_error" });
     }
   });
 
   // ===== ADMIN: Update table capacity =====
   app.patch("/api/admin/table/:tableId", requireAdmin, async (req, res) => {
     try {
-      const tableId = parseInt(req.params.tableId);
+      const tableId = Number(req.params.tableId);
       const { capacity } = req.body;
+      const rawStatus = typeof req.body?.status === "string" ? req.body.status.toLowerCase().trim() : undefined;
+      const normalizedStatus =
+        rawStatus === "unoccupied" ? "available" : rawStatus;
+      const validStatuses = ["available", "occupied", "reserved"];
+
       if (capacity !== undefined && (typeof capacity !== "number" || capacity < 1 || capacity > 20)) {
         return res.status(400).json({ message: "Capacity must be between 1 and 20" });
       }
-      const updated = await storage.updateTable(tableId, { capacity });
+      if (normalizedStatus !== undefined && !validStatuses.includes(normalizedStatus)) {
+        return res.status(400).json({ message: "Status must be occupied, reserved, or unoccupied" });
+      }
+
+      const updatePayload: { capacity?: number; status?: string; activeSessionId?: number | null } = {};
+      if (capacity !== undefined) updatePayload.capacity = capacity;
+      if (normalizedStatus !== undefined) {
+        updatePayload.status = normalizedStatus;
+        if (normalizedStatus === "available" || normalizedStatus === "reserved") {
+          updatePayload.activeSessionId = null;
+        }
+      }
+
+      if (Object.keys(updatePayload).length === 0) {
+        return res.status(400).json({ message: "No valid fields to update" });
+      }
+
+      const updated = await storage.updateTable(tableId, updatePayload);
       if (!updated) return res.status(404).json({ message: "Table not found" });
+      broadcast("table_cleared", { tableId: updated.id, status: updated.status });
       res.json(updated);
     } catch (error) {
       res.status(500).json({ message: "Failed to update table" });
@@ -581,7 +1093,7 @@ export async function registerRoutes(
 
   app.post("/api/waiter/table/:tableId/clear", requireAdmin, async (req, res) => {
     try {
-      const tableId = parseInt(req.params.tableId);
+      const tableId = Number(req.params.tableId);
       const table = await storage.getTables().then(t => t.find(tb => tb.id === tableId));
       if (!table) { res.status(404).json({ message: "Table not found" }); return; }
 

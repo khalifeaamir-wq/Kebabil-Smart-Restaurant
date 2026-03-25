@@ -1,18 +1,44 @@
 import { useQuery } from "@tanstack/react-query";
 import { QRCodeSVG } from "qrcode.react";
-import { useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import logoImg from "@assets/468146293_3917545001849558_7757020803682063832_n-removebg-prev_1772140405610.png";
 
 export default function TableQRCodes() {
-  const { data: tables, isLoading } = useQuery({
-    queryKey: ["/api/tables"],
+  const [baseUrlInput, setBaseUrlInput] = useState("");
+  const { data: tableQrs, isLoading } = useQuery({
+    queryKey: ["/api/qr/tables"],
+    queryFn: async () => {
+      const res = await fetch("/api/qr/tables");
+      if (!res.ok) throw new Error("Failed to fetch QR tables");
+      return res.json();
+    },
   });
   const printRef = useRef<HTMLDivElement>(null);
 
-  const baseUrl = window.location.origin;
+  const handlePrint = () => window.print();
+  useEffect(() => {
+    const stored = window.localStorage.getItem("qr_base_url") || "";
+    if (stored) {
+      setBaseUrlInput(stored);
+      return;
+    }
+    const current = window.location.origin;
+    const host = window.location.hostname;
+    if (host !== "localhost" && host !== "127.0.0.1") {
+      setBaseUrlInput(current);
+      window.localStorage.setItem("qr_base_url", current);
+    }
+  }, []);
 
-  const handlePrint = () => {
-    window.print();
+  const resolvedBaseUrl = useMemo(() => {
+    const raw = baseUrlInput.trim();
+    if (!raw) return "";
+    if (/^https?:\/\//i.test(raw)) return raw.replace(/\/+$/, "");
+    return `https://${raw}`.replace(/\/+$/, "");
+  }, [baseUrlInput]);
+
+  const saveBaseUrl = () => {
+    if (resolvedBaseUrl) window.localStorage.setItem("qr_base_url", resolvedBaseUrl);
   };
 
   if (isLoading) {
@@ -23,7 +49,7 @@ export default function TableQRCodes() {
     );
   }
 
-  const tableList = (tables as any[]) || [];
+  const tableList = (tableQrs as any[]) || [];
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-white" data-testid="qr-codes-page">
@@ -36,16 +62,30 @@ export default function TableQRCodes() {
               <p className="text-xs text-neutral-500">{tableList.length} tables — print & place on each table</p>
             </div>
           </div>
-          <div className="flex items-center gap-4">
-            <a href="/waiter" className="text-xs text-amber-400 hover:text-amber-300 uppercase tracking-wider" data-testid="link-waiter">Waiter</a>
-            <button
-              onClick={handlePrint}
-              className="bg-amber-400 text-black px-5 py-2 font-bold uppercase tracking-widest text-xs hover:bg-amber-300 rounded-none transition-colors"
-              data-testid="button-print"
-            >
-              Print All
-            </button>
-          </div>
+          <button
+            onClick={handlePrint}
+            className="bg-amber-400 text-black px-5 py-2 font-bold uppercase tracking-widest text-xs hover:bg-amber-300 rounded-none transition-colors"
+            data-testid="button-print"
+          >
+            Print All
+          </button>
+        </div>
+        <div className="max-w-6xl mx-auto mt-3 flex gap-2">
+          <input
+            value={baseUrlInput}
+            onChange={(e) => setBaseUrlInput(e.target.value)}
+            placeholder="Public base URL (e.g. https://your-domain.com)"
+            className="flex-1 bg-black border border-neutral-700 px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-400"
+            data-testid="input-qr-base-url"
+          />
+          <button
+            type="button"
+            onClick={saveBaseUrl}
+            className="bg-neutral-800 border border-neutral-700 px-3 py-2 text-xs uppercase tracking-wider hover:bg-neutral-700"
+            data-testid="button-save-qr-base-url"
+          >
+            Save
+          </button>
         </div>
       </header>
 
@@ -53,7 +93,7 @@ export default function TableQRCodes() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 print:grid-cols-2 print:gap-4">
           {tableList.map((table: any) => (
             <div
-              key={table.id}
+              key={table.tableId}
               className="bg-white text-black p-6 flex flex-col items-center print:break-inside-avoid print:p-4"
               data-testid={`qr-card-${table.tableNumber}`}
             >
@@ -65,7 +105,7 @@ export default function TableQRCodes() {
 
               <div className="border-2 border-neutral-200 p-3 rounded-none mb-4 print:mb-2 print:p-2">
                 <QRCodeSVG
-                  value={`${baseUrl}/table/${table.tableNumber}`}
+                  value={resolvedBaseUrl ? `${resolvedBaseUrl}${table.scanPath}` : table.scanUrl}
                   size={180}
                   level="H"
                   includeMargin={false}
@@ -82,26 +122,10 @@ export default function TableQRCodes() {
               <p className="text-xs text-neutral-500 text-center max-w-[200px] leading-relaxed print:text-[10px]">
                 Scan to view our menu & place your order directly from your phone
               </p>
-
-              <div className="mt-3 pt-3 border-t border-neutral-200 w-full text-center print:mt-2 print:pt-2">
-                <p className="text-[10px] text-neutral-400 uppercase tracking-wider">Free Wi-Fi Available</p>
-                <p className="text-[9px] text-neutral-400 mt-0.5">Rosa Manhattan, Hiranandani Estate, Thane</p>
-              </div>
             </div>
           ))}
         </div>
       </div>
-
-      <style>{`
-        @media print {
-          body { background: white !important; }
-          header, .print\\:hidden { display: none !important; }
-          .print\\:break-inside-avoid { break-inside: avoid; }
-          .print\\:grid-cols-2 { grid-template-columns: repeat(2, 1fr) !important; }
-          .print\\:gap-4 { gap: 1rem !important; }
-          @page { margin: 0.5in; }
-        }
-      `}</style>
     </div>
   );
 }

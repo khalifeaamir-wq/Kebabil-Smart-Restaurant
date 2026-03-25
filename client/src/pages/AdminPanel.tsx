@@ -45,10 +45,13 @@ const formatPrice = (paise: number) => `₹${(paise / 100).toLocaleString("en-IN
 
 const statusConfig: Record<string, { bg: string; dot: string; text: string }> = {
   available: { bg: "border-green-500/30 bg-green-500/5", dot: "bg-green-500", text: "text-green-400" },
+  unoccupied: { bg: "border-green-500/30 bg-green-500/5", dot: "bg-green-500", text: "text-green-400" },
   occupied: { bg: "border-amber-500/30 bg-amber-500/5", dot: "bg-amber-500", text: "text-amber-400" },
   reserved: { bg: "border-purple-500/30 bg-purple-500/5", dot: "bg-purple-500", text: "text-purple-400" },
   cleaning: { bg: "border-orange-500/30 bg-orange-500/5", dot: "bg-orange-500", text: "text-orange-400" },
 };
+
+const displayTableStatus = (status: string) => (status === "available" ? "unoccupied" : status);
 
 const orderStatusBadge: Record<string, string> = {
   new: "bg-blue-500/20 text-blue-400 border-blue-500/30",
@@ -85,6 +88,7 @@ export default function AdminPanel() {
       const res = await fetch(`/api/admin/table/${tableId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({ capacity }),
       });
       if (!res.ok) throw new Error("Failed to update");
@@ -94,6 +98,26 @@ export default function AdminPanel() {
       refetch();
       setEditingCapacity(null);
     },
+  });
+
+  const updateTableStatusMutation = useMutation({
+    mutationFn: async ({ tableId, status }: { tableId: number; status: "occupied" | "reserved" | "unoccupied" }) => {
+      const res = await fetch(`/api/admin/table/${tableId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ status }),
+      });
+      if (!res.ok) throw new Error("Failed to update status");
+      return res.json();
+    },
+    onMutate: async ({ tableId, status }) => {
+      const normalizedStatus = status === "unoccupied" ? "available" : status;
+      queryClient.setQueryData<TableData[]>(["admin-tables"], (old) =>
+        (old || []).map((t) => (t.id === tableId ? { ...t, status: normalizedStatus } : t))
+      );
+    },
+    onSuccess: () => refetch(),
   });
 
   const clearTableMutation = useMutation({
@@ -138,11 +162,7 @@ export default function AdminPanel() {
               <p className="text-[11px] text-neutral-500">Live restaurant overview</p>
             </div>
           </div>
-          <div className="flex items-center gap-4">
-            <a href="/kitchen" className="text-xs text-amber-400 hover:text-amber-300 uppercase tracking-wider" data-testid="link-kitchen">Kitchen</a>
-            <a href="/waiter" className="text-xs text-amber-400 hover:text-amber-300 uppercase tracking-wider" data-testid="link-waiter">Waiter</a>
-            <a href="/analytics" className="text-xs text-amber-400 hover:text-amber-300 uppercase tracking-wider" data-testid="link-analytics">Analytics</a>
-            <a href="/qr-codes" className="text-xs text-amber-400 hover:text-amber-300 uppercase tracking-wider" data-testid="link-qr">QR</a>
+          <div className="flex items-center gap-2">
             <div className="flex items-center gap-1.5">
               <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
               <span className="text-[11px] text-green-400">Live</span>
@@ -223,6 +243,7 @@ export default function AdminPanel() {
                   editingCapacity={editingCapacity}
                   setEditingCapacity={setEditingCapacity}
                   onSaveCapacity={(tableId, cap) => updateCapacityMutation.mutate({ tableId, capacity: cap })}
+                  onSetTableStatus={(tableId, status) => updateTableStatusMutation.mutate({ tableId, status })}
                   onClearTable={(tableId) => clearTableMutation.mutate(tableId)}
                   onUpdateOrder={(orderId, status) => updateOrderMutation.mutate({ orderId, status })}
                 />
@@ -250,6 +271,7 @@ function TableDetail({
   editingCapacity,
   setEditingCapacity,
   onSaveCapacity,
+  onSetTableStatus,
   onClearTable,
   onUpdateOrder,
 }: {
@@ -257,6 +279,7 @@ function TableDetail({
   editingCapacity: { tableId: number; value: number } | null;
   setEditingCapacity: (v: { tableId: number; value: number } | null) => void;
   onSaveCapacity: (tableId: number, capacity: number) => void;
+  onSetTableStatus: (tableId: number, status: "occupied" | "reserved" | "unoccupied") => void;
   onClearTable: (tableId: number) => void;
   onUpdateOrder: (orderId: number, status: string) => void;
 }) {
@@ -276,10 +299,10 @@ function TableDetail({
       <div className="flex items-center justify-between mb-4">
         <div>
           <h3 className="text-2xl font-bold text-white">Table {table.tableNumber}</h3>
-          <div className={`text-xs uppercase tracking-widest ${cfg.text}`}>{table.status}</div>
+          <div className={`text-xs uppercase tracking-widest ${cfg.text}`}>{displayTableStatus(table.status)}</div>
         </div>
         <div className={`px-3 py-1.5 border ${cfg.bg}`}>
-          <div className={`text-xs font-bold uppercase tracking-wider ${cfg.text}`}>{table.status}</div>
+          <div className={`text-xs font-bold uppercase tracking-wider ${cfg.text}`}>{displayTableStatus(table.status)}</div>
         </div>
       </div>
 
@@ -324,6 +347,45 @@ function TableDetail({
               <span className="text-[10px] text-neutral-500 group-hover:text-amber-400 uppercase tracking-wider">Edit</span>
             </button>
           )}
+        </div>
+      </div>
+
+      <div className="bg-neutral-800 p-3 mb-4">
+        <div className="text-[10px] uppercase tracking-widest text-neutral-500 mb-2">Table Status</div>
+        <div className="grid grid-cols-3 gap-2">
+          <button
+            onClick={() => onSetTableStatus(table.id, "occupied")}
+            className={`py-2 text-[10px] uppercase tracking-wider font-semibold border transition-colors ${
+              table.status === "occupied"
+                ? "bg-amber-500/20 border-amber-500/40 text-amber-300"
+                : "bg-neutral-900 border-neutral-700 text-neutral-300 hover:border-amber-400/50"
+            }`}
+            data-testid={`set-status-occupied-${table.tableNumber}`}
+          >
+            Occupied
+          </button>
+          <button
+            onClick={() => onSetTableStatus(table.id, "reserved")}
+            className={`py-2 text-[10px] uppercase tracking-wider font-semibold border transition-colors ${
+              table.status === "reserved"
+                ? "bg-purple-500/20 border-purple-500/40 text-purple-300"
+                : "bg-neutral-900 border-neutral-700 text-neutral-300 hover:border-purple-400/50"
+            }`}
+            data-testid={`set-status-reserved-${table.tableNumber}`}
+          >
+            Reserved
+          </button>
+          <button
+            onClick={() => onSetTableStatus(table.id, "unoccupied")}
+            className={`py-2 text-[10px] uppercase tracking-wider font-semibold border transition-colors ${
+              table.status === "available"
+                ? "bg-green-500/20 border-green-500/40 text-green-300"
+                : "bg-neutral-900 border-neutral-700 text-neutral-300 hover:border-green-400/50"
+            }`}
+            data-testid={`set-status-unoccupied-${table.tableNumber}`}
+          >
+            Unoccupied
+          </button>
         </div>
       </div>
 
