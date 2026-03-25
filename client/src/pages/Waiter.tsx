@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { wsClient } from "@/lib/websocket";
 import { useToast } from "@/hooks/use-toast";
+import { AdminPortalTabs } from "@/components/AdminPortalTabs";
 import logoImg from "@assets/468146293_3917545001849558_7757020803682063832_n-removebg-prev_1772140405610.png";
 
 interface TableData {
@@ -170,9 +171,7 @@ export default function Waiter() {
             </div>
           </div>
           <div className="flex items-center gap-4">
-            <a href="/qr-codes" className="text-xs text-amber-400 hover:text-amber-300 uppercase tracking-wider" data-testid="link-qr-codes">QR Codes</a>
-            <a href="/analytics" className="text-xs text-amber-400 hover:text-amber-300 uppercase tracking-wider" data-testid="link-analytics">Analytics</a>
-            <a href="/door" className="text-xs text-amber-400 hover:text-amber-300 uppercase tracking-wider" data-testid="link-door">Door</a>
+            <AdminPortalTabs current="waiter" />
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
               <span className="text-xs text-green-400">Live</span>

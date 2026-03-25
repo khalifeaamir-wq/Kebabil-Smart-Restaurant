@@ -5,6 +5,7 @@ import { Clock, ChefHat, Check, Bell, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { wsClient } from "@/lib/websocket";
+import { AdminPortalTabs } from "@/components/AdminPortalTabs";
 import logoImg from "@assets/468146293_3917545001849558_7757020803682063832_n-removebg-prev_1772140405610.png";
 
 interface OrderItemData {
@@ -102,7 +103,7 @@ export default function Kitchen() {
             </div>
           </div>
           <div className="flex items-center gap-4">
-            <a href="/waiter" className="text-xs text-amber-400 hover:text-amber-300 uppercase tracking-wider" data-testid="link-waiter">Waiter</a>
+            <AdminPortalTabs current="kitchen" />
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
               <span className="text-xs text-green-400">Live</span>

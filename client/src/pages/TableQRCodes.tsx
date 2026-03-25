@@ -1,6 +1,7 @@
-import { useQuery } from "@tanstack/react-query";
+﻿import { useQuery } from "@tanstack/react-query";
 import { QRCodeSVG } from "qrcode.react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { AdminPortalTabs } from "@/components/AdminPortalTabs";
 import logoImg from "@assets/468146293_3917545001849558_7757020803682063832_n-removebg-prev_1772140405610.png";
 
 export default function TableQRCodes() {
@@ -59,16 +60,19 @@ export default function TableQRCodes() {
             <img src={logoImg} alt="Kebabil" className="h-8" />
             <div>
               <h1 className="text-lg font-bold text-amber-400 uppercase tracking-widest" data-testid="qr-title">Table QR Codes</h1>
-              <p className="text-xs text-neutral-500">{tableList.length} tables — print & place on each table</p>
+              <p className="text-xs text-neutral-500">{tableList.length} tables â€” print & place on each table</p>
             </div>
           </div>
-          <button
-            onClick={handlePrint}
-            className="bg-amber-400 text-black px-5 py-2 font-bold uppercase tracking-widest text-xs hover:bg-amber-300 rounded-none transition-colors"
-            data-testid="button-print"
-          >
-            Print All
-          </button>
+          <div className="flex items-center gap-4">
+            <AdminPortalTabs current="qr-codes" />
+            <button
+              onClick={handlePrint}
+              className="bg-amber-400 text-black px-5 py-2 font-bold uppercase tracking-widest text-xs hover:bg-amber-300 rounded-none transition-colors"
+              data-testid="button-print"
+            >
+              Print All
+            </button>
+          </div>
         </div>
         <div className="max-w-6xl mx-auto mt-3 flex gap-2">
           <input
@@ -129,3 +133,4 @@ export default function TableQRCodes() {
     </div>
   );
 }
+

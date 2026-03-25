@@ -70,6 +70,7 @@ function generate4DigitPin(): string {
 
 const UPI_MERCHANT_ID = process.env.UPI_MERCHANT_ID || "kebabil@upi";
 const UPI_MERCHANT_NAME = process.env.UPI_MERCHANT_NAME || "Kebabil";
+const PENDING_PAYMENT_TTL_MS = 15 * 60 * 1000;
 
 type BillSummary = {
   subtotal: number;
@@ -91,6 +92,13 @@ function buildUpiUri(args: { pa: string; pn: string; am: number; tn: string; tr:
     tr: args.tr,
   });
   return `upi://pay?${params.toString()}`;
+}
+
+function isStalePendingPayment(payment: { paymentStatus: string; createdAt: Date | string | number }, now = Date.now()): boolean {
+  if (payment.paymentStatus !== "pending_verification") return false;
+  const createdAt = new Date(payment.createdAt).getTime();
+  if (!Number.isFinite(createdAt)) return false;
+  return now - createdAt >= PENDING_PAYMENT_TTL_MS;
 }
 
 export async function registerRoutes(
@@ -592,6 +600,12 @@ export async function registerRoutes(
     };
 
     const payments = await storage.getPaymentsBySession(sessionId);
+    const now = Date.now();
+    for (const payment of payments) {
+      if (!isStalePendingPayment(payment, now)) continue;
+      await storage.updatePayment(payment.id, { paymentStatus: "expired" });
+      payment.paymentStatus = "expired";
+    }
     const completedPayment = payments.find((p) => p.paymentStatus === "completed");
 
     return {
@@ -733,7 +747,7 @@ export async function registerRoutes(
       const paymentIntentRef = `UPI-INTENT-${snapshot.session.id}-${Date.now()}`;
       const pendingUpi = snapshot.payments.find(
         (p) =>
-          p.paymentStatus !== "completed" &&
+          p.paymentStatus === "pending_verification" &&
           p.paymentMethod === "upi" &&
           p.amount === snapshot.bill.total
       );
@@ -799,7 +813,7 @@ export async function registerRoutes(
         return;
       }
 
-      const existingPending = snapshot.payments.find((p) => p.paymentStatus !== "completed");
+      const existingPending = snapshot.payments.find((p) => p.paymentStatus === "pending_verification");
       if (existingPending) {
         const updatedPending = await storage.updatePayment(existingPending.id, {
           amount: snapshot.bill.total,
@@ -854,8 +868,14 @@ export async function registerRoutes(
   app.get("/api/waiter/payments/pending", requireAdmin, async (_req, res) => {
     try {
       const allPayments = await storage.getAllPayments();
+      const now = Date.now();
+      for (const payment of allPayments) {
+        if (!isStalePendingPayment(payment, now)) continue;
+        await storage.updatePayment(payment.id, { paymentStatus: "expired" });
+        payment.paymentStatus = "expired";
+      }
       const pendingPayments = allPayments
-        .filter((p) => p.paymentStatus !== "completed")
+        .filter((p) => p.paymentStatus === "pending_verification")
         .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
       const seenSessions = new Set<number>();
       const result: Array<{

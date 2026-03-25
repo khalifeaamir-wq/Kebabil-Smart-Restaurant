@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { wsClient } from "@/lib/websocket";
+import { AdminPortalTabs } from "@/components/AdminPortalTabs";
 import logoImg from "@assets/468146293_3917545001849558_7757020803682063832_n-removebg-prev_1772140405610.png";
 
 interface OrderItem {
@@ -162,7 +163,8 @@ export default function AdminPanel() {
               <p className="text-[11px] text-neutral-500">Live restaurant overview</p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-4">
+            <AdminPortalTabs current="admin" />
             <div className="flex items-center gap-1.5">
               <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
               <span className="text-[11px] text-green-400">Live</span>

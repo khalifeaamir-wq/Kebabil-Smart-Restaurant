@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
+import { AdminPortalTabs } from "@/components/AdminPortalTabs";
 
 function formatPrice(paise: number) {
   return `₹${(paise / 100).toLocaleString("en-IN")}`;
@@ -46,9 +47,7 @@ export default function Analytics() {
             <h1 className="text-2xl font-bold text-amber-400 uppercase tracking-widest" data-testid="analytics-title">Kebabil Analytics</h1>
             <p className="text-sm text-neutral-400 mt-1">Real-time restaurant insights</p>
           </div>
-          <a href="/waiter" className="text-sm text-amber-400 hover:text-amber-300 uppercase tracking-wider" data-testid="link-waiter">
-            Waiter Dashboard →
-          </a>
+          <AdminPortalTabs current="analytics" />
         </div>
       </header>
 

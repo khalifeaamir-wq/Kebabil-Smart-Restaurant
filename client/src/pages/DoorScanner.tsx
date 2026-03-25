@@ -1,5 +1,6 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 import { apiRequest } from "@/lib/queryClient";
+import { AdminPortalTabs } from "@/components/AdminPortalTabs";
 
 type VerifyResult = {
   success: boolean;
@@ -62,9 +63,7 @@ export default function DoorScanner() {
             <h1 className="text-2xl font-bold text-amber-400 uppercase tracking-widest" data-testid="door-title">Exit PIN Verify</h1>
             <p className="text-sm text-neutral-400 mt-1">Enter table number and 4-digit PIN</p>
           </div>
-          <a href="/analytics" className="text-sm text-amber-400 hover:text-amber-300 uppercase tracking-wider" data-testid="link-analytics">
-            Analytics -&gt;
-          </a>
+          <AdminPortalTabs current="door" />
         </div>
       </header>
 
@@ -82,7 +81,7 @@ export default function DoorScanner() {
 
           <label className="text-xs uppercase tracking-widest text-neutral-500 mb-2 block">PIN</label>
           <div className="w-full bg-black border border-neutral-700 px-4 py-3 mb-4 text-3xl font-mono tracking-[0.5em] text-center" data-testid="input-pin-display">
-            {(pin || "").padEnd(4, "�")}
+            {(pin || "").padEnd(4, "•")}
           </div>
 
           <div className="grid grid-cols-3 gap-2 mb-4">
@@ -130,3 +129,4 @@ export default function DoorScanner() {
     </div>
   );
 }
+
