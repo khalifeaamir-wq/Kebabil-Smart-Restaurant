@@ -15,6 +15,7 @@ import TableQRCodes from "@/pages/TableQRCodes";
 import AdminPanel from "@/pages/AdminPanel";
 import AdminLogin from "@/pages/AdminLogin";
 import { useAuth } from "@/lib/useAuth";
+import { Analytics as VercelAnalytics } from '@vercel/analytics/react';
 
 function AdminRoute({ component: Component }: { component: React.ComponentType }) {
   const { loading, authenticated, user, login, logout } = useAuth();
@@ -75,6 +76,7 @@ function App() {
       <TooltipProvider>
         <Toaster />
         <Router />
+        <VercelAnalytics />
       </TooltipProvider>
     </QueryClientProvider>
   );
