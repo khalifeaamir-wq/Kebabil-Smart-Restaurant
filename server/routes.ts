@@ -68,7 +68,10 @@ function generate4DigitPin(): string {
   return crypto.randomInt(0, 10000).toString().padStart(4, "0");
 }
 
-const UPI_MERCHANT_ID = process.env.UPI_MERCHANT_ID || "kebabil@upi";
+const UPI_MERCHANT_ID =
+  (process.env.UPI_MERCHANT_ID || "").trim().toLowerCase() === "kebabil@upi"
+    ? "aamirkhalife@fam"
+    : (process.env.UPI_MERCHANT_ID || "aamirkhalife@fam").trim();
 const UPI_MERCHANT_NAME = process.env.UPI_MERCHANT_NAME || "Kebabil";
 const PENDING_PAYMENT_TTL_MS = 15 * 60 * 1000;
 
@@ -768,7 +771,7 @@ export async function registerRoutes(
         tr: `TXN-${paymentRecord.id}-${snapshot.session.id}`,
       });
 
-      res.json({
+      res.set("Cache-Control", "no-store").json({
         paymentId: paymentRecord.id,
         sessionId: snapshot.session.id,
         amountPaise: snapshot.bill.total,

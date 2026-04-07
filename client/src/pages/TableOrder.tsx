@@ -172,7 +172,9 @@ export default function TableOrder() {
   const { data: upiPaymentData, refetch: refetchUpiPaymentData, isFetching: isFetchingUpi } = useQuery<UpiPaymentData>({
     queryKey: ["upi-payment-data", sessionData?.sessionId, billData?.bill?.total],
     queryFn: async () => {
-      const res = await fetch(`/api/session/${sessionData!.sessionId}/payment/upi`);
+      const res = await fetch(`/api/session/${sessionData!.sessionId}/payment/upi`, {
+        cache: "no-store",
+      });
       if (!res.ok) {
         const error = await res.json().catch(() => ({}));
         throw new Error(error.message || "Failed to generate UPI QR");
@@ -180,6 +182,7 @@ export default function TableOrder() {
       return res.json();
     },
     enabled: !!sessionData && view === "bill" && selectedPayment === "upi" && !!billData && !billData.isPaid,
+    refetchOnMount: "always",
     retry: false,
   });
 
