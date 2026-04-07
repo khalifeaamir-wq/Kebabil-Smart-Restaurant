@@ -1,8 +1,8 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
-import { storage } from "./storage";
-import { insertMenuItemSchema, insertMenuCategorySchema } from "@shared/schema";
-import { broadcast } from "./websocket";
+import { storage } from "./storage.js";
+import { insertMenuItemSchema, insertMenuCategorySchema } from "../shared/schema.js";
+import { broadcast } from "./websocket.js";
 import crypto from "crypto";
 
 function hashPassword(password: string): string {

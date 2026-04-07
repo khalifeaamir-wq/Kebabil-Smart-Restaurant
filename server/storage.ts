@@ -13,7 +13,7 @@ import {
   menuCategories, menuItems,
   restaurantTables, diningSessions, orders, orderItems,
   payments, exitTokens, exitPins, doorAccessLogs, adminUsers,
-} from "@shared/schema";
+} from "../shared/schema.js";
 import { eq, asc, desc, and, inArray, lt } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/better-sqlite3";
 import Database from "better-sqlite3";

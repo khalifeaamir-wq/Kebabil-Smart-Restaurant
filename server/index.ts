@@ -1,8 +1,8 @@
 import express, { type Request, Response, NextFunction } from "express";
 import session from "express-session";
 import SQLiteStore from "connect-sqlite3";
-import { registerRoutes } from "./routes";
-import { serveStatic } from "./static";
+import { registerRoutes } from "./routes.js";
+import { serveStatic } from "./static.js";
 import { createServer } from "http";
 import crypto from "crypto";
 import path from "path";
@@ -91,9 +91,9 @@ app.use((req, res, next) => {
 });
 
 (async () => {
-  const { setupWebSocket } = await import("./websocket");
+  const { setupWebSocket } = await import("./websocket.js");
   setupWebSocket(httpServer);
-  const { seedIfEmpty } = await import("./seed");
+  const { seedIfEmpty } = await import("./seed.js");
   await seedIfEmpty();
   await registerRoutes(httpServer, app);
 
@@ -116,7 +116,7 @@ app.use((req, res, next) => {
   if (process.env.NODE_ENV === "production") {
     serveStatic(app);
   } else {
-    const { setupVite } = await import("./vite");
+    const { setupVite } = await import("./vite.js");
     await setupVite(httpServer, app);
   }
 

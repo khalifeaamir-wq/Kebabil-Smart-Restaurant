@@ -1,0 +1,25 @@
+{
+  "extends": "./tsconfig.json",
+  "include": ["server/**/*", "shared/**/*", "server/types/**/*"],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "build",
+    "client",
+    "server/vite.ts",
+    "vite.config.ts",
+    "vite-plugin-meta-images.ts"
+  ],
+  "compilerOptions": {
+    "noEmit": false,
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "target": "ES2022",
+    "outDir": "dist",
+    "rootDir": ".",
+    "allowImportingTsExtensions": false,
+    "declaration": false,
+    "sourceMap": false,
+    "ignoreDeprecations": "6.0"
+  }
+}
