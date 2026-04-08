@@ -92,6 +92,7 @@
     "@replit/vite-plugin-runtime-error-modal": "^0.0.6",
     "@tailwindcss/vite": "^4.2.2",
     "@types/connect-pg-simple": "^7.0.3",
+    "@types/connect-sqlite3": "^0.9.6",
     "@types/cors": "^2.8.18",
     "@types/express": "^5.0.6",
     "@types/express-session": "^1.18.2",
