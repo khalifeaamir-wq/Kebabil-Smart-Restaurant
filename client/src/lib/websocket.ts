@@ -1,3 +1,4 @@
+import { getWebSocketUrl } from "@/lib/runtimeConfig";
 type Listener = (data: any) => void;
 
 class WsClient {
@@ -7,8 +8,7 @@ class WsClient {
 
   connect() {
     if (this.ws?.readyState === WebSocket.OPEN) return;
-    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    this.ws = new WebSocket(`${protocol}//${window.location.host}/ws`);
+    this.ws = new WebSocket(getWebSocketUrl("/ws"));
 
     this.ws.onmessage = (event) => {
       try {

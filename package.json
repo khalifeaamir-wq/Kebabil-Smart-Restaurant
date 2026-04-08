@@ -1,18 +1,17 @@
 {
   "name": "rest-express",
   "version": "1.0.0",
-  "type": "module",
   "license": "MIT",
   "scripts": {
     "dev:client": "vite dev --port 5000",
-    "dev": "vite",
+    "dev": "ts-node server/index.ts",
     "build": "vite build && tsc -p tsconfig.server.json",
     "build:full": "node script/build.mjs",
-    "dev:server": "cross-env NODE_ENV=development tsx server/index.ts",
+    "dev:server": "ts-node server/index.ts",
     "start": "node dist/server/index.js",
-    "start:dev": "cross-env NODE_ENV=development tsx server/index.ts",
+    "start:dev": "cross-env NODE_ENV=development ts-node server/index.ts",
     "start:prod": "cross-env NODE_ENV=production node dist/server/index.js",
-    "check": "tsc",
+    "check": "tsc -p tsconfig.server.json",
     "db:push": "drizzle-kit push"
   },
   "dependencies": {
@@ -54,6 +53,7 @@
     "cmdk": "^1.1.1",
     "connect-pg-simple": "^10.0.0",
     "connect-sqlite3": "^0.9.16",
+    "cors": "^2.8.5",
     "date-fns": "^4.1.0",
     "drizzle-orm": "^0.45.2",
     "drizzle-zod": "^0.8.3",
@@ -92,6 +92,7 @@
     "@replit/vite-plugin-runtime-error-modal": "^0.0.6",
     "@tailwindcss/vite": "^4.2.2",
     "@types/connect-pg-simple": "^7.0.3",
+    "@types/cors": "^2.8.18",
     "@types/express": "^5.0.6",
     "@types/express-session": "^1.18.2",
     "@types/node": "^25.5.2",

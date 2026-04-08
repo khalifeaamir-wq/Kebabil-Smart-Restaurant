@@ -1,10 +1,9 @@
 import express, { type Express } from "express";
 import fs from "fs";
 import path from "path";
-import { fileURLToPath } from "url";
 
 export function serveStatic(app: Express) {
-  const currentDir = path.dirname(fileURLToPath(import.meta.url));
+  const currentDir = __dirname;
   const candidatePaths = [
     path.resolve(currentDir, ".."),
     path.resolve(currentDir, "../public"),

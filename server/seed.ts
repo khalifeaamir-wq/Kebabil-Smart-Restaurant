@@ -1,5 +1,5 @@
-import { db } from "./storage.js";
-import { menuCategories, menuItems, restaurantTables } from "../shared/schema.js";
+import { db } from "./storage";
+import { menuCategories, menuItems, restaurantTables } from "../shared/schema";
 
 const menuData = [
   {

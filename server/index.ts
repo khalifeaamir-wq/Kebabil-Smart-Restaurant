@@ -1,15 +1,57 @@
 import express, { type Request, Response, NextFunction } from "express";
 import session from "express-session";
 import SQLiteStore from "connect-sqlite3";
-import { registerRoutes } from "./routes.js";
-import { serveStatic } from "./static.js";
+import cors from "cors";
+import { registerRoutes } from "./routes";
+import { serveStatic } from "./static";
+import { setupWebSocket } from "./websocket";
+import { seedIfEmpty } from "./seed";
+import { verifyDatabaseConnection } from "./verify-db";
 import { createServer } from "http";
 import crypto from "crypto";
-import path from "path";
-import { fileURLToPath } from "url";
 
 const app = express();
 const httpServer = createServer(app);
+const isProduction = process.env.NODE_ENV === "production";
+const allowedCorsOrigins = (process.env.CORS_ORIGIN || process.env.FRONTEND_URL || "")
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
+app.set("trust proxy", 1);
+app.use(
+  cors({
+    origin: (
+      origin: string | undefined,
+      callback: (err: Error | null, allow?: boolean) => void,
+    ) => {
+      if (!origin) {
+        callback(null, true);
+        return;
+      }
+
+      if (
+        allowedCorsOrigins.length === 0 ||
+        allowedCorsOrigins.includes(origin)
+      ) {
+        callback(null, true);
+        return;
+      }
+
+      try {
+        if (/\.vercel\.app$/i.test(new URL(origin).hostname)) {
+          callback(null, true);
+          return;
+        }
+      } catch (_error) {
+        // ignore malformed origin values
+      }
+
+      callback(new Error("Not allowed by CORS"));
+    },
+    credentials: true,
+  }),
+);
 
 declare module "http" {
   interface IncomingMessage {
@@ -36,7 +78,7 @@ app.use(
 app.use(express.urlencoded({ extended: false }));
 
 const SqliteStore = SQLiteStore(session);
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const __dirname = require("path").resolve();
 const sessionSecret = process.env.SESSION_SECRET || crypto.randomBytes(32).toString("hex");
 app.use(
   session({
@@ -47,11 +89,15 @@ app.use(
     cookie: {
       maxAge: 24 * 60 * 60 * 1000,
       httpOnly: true,
-      secure: false,
-      sameSite: "lax",
+      secure: isProduction,
+      sameSite: isProduction ? "none" : "lax",
     },
   }),
 );
+
+app.get("/", (_req, res) => {
+  res.send("Server running");
+});
 
 export function log(message: string, source = "express") {
   const formattedTime = new Date().toLocaleTimeString("en-US", {
@@ -91,9 +137,8 @@ app.use((req, res, next) => {
 });
 
 (async () => {
-  const { setupWebSocket } = await import("./websocket.js");
+  await verifyDatabaseConnection();
   setupWebSocket(httpServer);
-  const { seedIfEmpty } = await import("./seed.js");
   await seedIfEmpty();
   await registerRoutes(httpServer, app);
 
@@ -116,7 +161,7 @@ app.use((req, res, next) => {
   if (process.env.NODE_ENV === "production") {
     serveStatic(app);
   } else {
-    const { setupVite } = await import("./vite.js");
+    const { setupVite } = await import("./vite");
     await setupVite(httpServer, app);
   }
 
@@ -124,11 +169,11 @@ app.use((req, res, next) => {
   // Other ports are firewalled. Default to 5000 if not specified.
   // this serves both the API and the client.
   // It is the only port that is not firewalled.
-  const port = parseInt(process.env.PORT || "5000", 10);
+  const port = parseInt(process.env.PORT || "10000", 10);
   httpServer.listen(
     {
       port,
-      host: "127.0.0.1",
+      host: "0.0.0.0",
     },
     () => {
       log(`serving on port ${port}`);

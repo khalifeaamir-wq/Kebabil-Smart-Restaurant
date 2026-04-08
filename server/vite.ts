@@ -1,10 +1,15 @@
 import { type Express } from "express";
-import { createServer as createViteServer, createLogger } from "vite";
 import { type Server } from "http";
 import fs from "fs";
 import path from "path";
 import { nanoid } from "nanoid";
 
+const { createServer: createViteServer, createLogger } = require("vite") as {
+  createServer: (config: Record<string, unknown>) => Promise<any>;
+  createLogger: () => {
+    error: (msg: string, options?: unknown) => void;
+  };
+};
 const viteLogger = createLogger();
 
 export async function setupVite(server: Server, app: Express) {
@@ -15,10 +20,10 @@ export async function setupVite(server: Server, app: Express) {
   };
 
   const vite = await createViteServer({
-    configFile: path.resolve(import.meta.dirname, "..", "vite.config.ts"),
+    configFile: path.resolve(__dirname, "..", "vite.config.ts"),
     customLogger: {
       ...viteLogger,
-      error: (msg, options) => {
+      error: (msg: string, options?: unknown) => {
         viteLogger.error(msg, options);
         process.exit(1);
       },
@@ -34,7 +39,7 @@ export async function setupVite(server: Server, app: Express) {
 
     try {
       const clientTemplate = path.resolve(
-        import.meta.dirname,
+        __dirname,
         "..",
         "client",
         "index.html",

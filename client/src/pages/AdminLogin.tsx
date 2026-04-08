@@ -18,7 +18,10 @@ export default function AdminLogin({ onLogin }: AdminLoginProps) {
     fetch("/api/auth/needs-setup")
       .then(r => r.json())
       .then(d => setNeedsSetup(d.needsSetup))
-      .catch(() => setNeedsSetup(false));
+      .catch((err) => {
+        console.error("Failed to check setup status", err);
+        setNeedsSetup(false);
+      });
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -41,8 +44,13 @@ export default function AdminLogin({ onLogin }: AdminLoginProps) {
       }
       const user = await res.json();
       onLogin(user);
-    } catch {
-      setError("Connection failed. Please try again.");
+    } catch (err) {
+      console.error("Admin auth request failed", err);
+      const message =
+        err instanceof Error && err.message
+          ? err.message.replace(/^\d+:\s*/, "")
+          : "Connection failed. Please try again.";
+      setError(message);
     }
     setLoading(false);
   };
