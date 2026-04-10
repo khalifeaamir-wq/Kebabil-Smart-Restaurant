@@ -130,18 +130,110 @@ export const adminUsers = sqliteTable("admin_users", {
   lastLoginAt: integer("last_login_at", { mode: "timestamp" }),
 });
 
-export const insertAdminUserSchema = createInsertSchema(adminUsers).omit({ id: true, createdAt: true, lastLoginAt: true });
+export const insertAdminUserSchema = z.object({
+  username: z.string(),
+  passwordHash: z.string(),
+  displayName: z.string(),
+  role: z.string().default("staff"),
+  isActive: z.boolean().default(true),
+});
 
-export const insertMenuCategorySchema = createInsertSchema(menuCategories).omit({ id: true });
-export const insertMenuItemSchema = createInsertSchema(menuItems).omit({ id: true });
-export const insertTableSchema = createInsertSchema(restaurantTables).omit({ id: true });
-export const insertSessionSchema = createInsertSchema(diningSessions).omit({ id: true });
-export const insertOrderSchema = createInsertSchema(orders).omit({ id: true });
-export const insertOrderItemSchema = createInsertSchema(orderItems).omit({ id: true });
-export const insertPaymentSchema = createInsertSchema(payments).omit({ id: true });
-export const insertExitTokenSchema = createInsertSchema(exitTokens).omit({ id: true });
-export const insertExitPinSchema = createInsertSchema(exitPins).omit({ id: true });
-export const insertDoorAccessLogSchema = createInsertSchema(doorAccessLogs).omit({ id: true });
+export const insertMenuCategorySchema = z.object({
+  name: z.string(),
+  sortOrder: z.number().default(0),
+  isActive: z.boolean().default(true),
+});
+
+export const insertMenuItemSchema = z.object({
+  categoryId: z.number(),
+  name: z.string(),
+  description: z.string().default(""),
+  price: z.string(),
+  priceValue: z.number().default(0),
+  variants: z.any().default("[]"),
+  addons: z.any().default("[]"),
+  badge: z.string().default(""),
+  imageUrl: z.string().default(""),
+  type: z.string().default("non_veg"),
+  spiceLevel: z.number().default(1),
+  isAvailable: z.boolean().default(true),
+  prepTimeMinutes: z.number().default(15),
+  sortOrder: z.number().default(0),
+  isActive: z.boolean().default(true),
+});
+
+export const insertTableSchema = z.object({
+  tableNumber: z.number(),
+  capacity: z.number().default(4),
+  status: z.string().default("available"),
+  activeSessionId: z.number().optional(),
+});
+
+export const insertSessionSchema = z.object({
+  tableId: z.number(),
+  sessionCode: z.string(),
+  status: z.string().default("active"),
+  closedAt: z.date().optional(),
+});
+
+export const insertOrderSchema = z.object({
+  sessionId: z.number(),
+  tableId: z.number(),
+  orderNumber: z.string(),
+  status: z.string().default("new"),
+  subtotal: z.number().default(0),
+  tax: z.number().default(0),
+  total: z.number().default(0),
+  notes: z.string().default(""),
+});
+
+export const insertOrderItemSchema = z.object({
+  orderId: z.number(),
+  menuItemId: z.number(),
+  menuItemName: z.string(),
+  quantity: z.number().default(1),
+  unitPrice: z.number(),
+  totalPrice: z.number(),
+  itemNote: z.string().default(""),
+  variant: z.string().default(""),
+});
+
+export const insertPaymentSchema = z.object({
+  sessionId: z.number(),
+  amount: z.number(),
+  paymentMethod: z.string().default("pending"),
+  paymentStatus: z.string().default("pending"),
+  transactionRef: z.string().default(""),
+  verifiedByAdminId: z.number().optional(),
+  verifiedByName: z.string().default(""),
+  paidAt: z.date().optional(),
+});
+
+export const insertExitTokenSchema = z.object({
+  sessionId: z.number(),
+  paymentId: z.number(),
+  tokenHash: z.string(),
+  expiresAt: z.date(),
+});
+
+export const insertExitPinSchema = z.object({
+  orderId: z.number(),
+  tableId: z.number(),
+  paymentId: z.number(),
+  pinHash: z.string(),
+  pinCode: z.string().default(""),
+  status: z.string().default("active"),
+  expiresAt: z.date(),
+  usedAt: z.date().optional(),
+  attempts: z.number().default(0),
+  maxAttempts: z.number().default(5),
+});
+
+export const insertDoorAccessLogSchema = z.object({
+  exitTokenId: z.number(),
+  result: z.string().default("success"),
+  reason: z.string().default(""),
+});
 
 export type MenuCategory = typeof menuCategories.$inferSelect;
 export type InsertMenuCategory = z.infer<typeof insertMenuCategorySchema>;

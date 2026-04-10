@@ -4,14 +4,35 @@ import { storage } from "./storage";
 import { insertMenuItemSchema, insertMenuCategorySchema } from "../shared/schema";
 import { broadcast } from "./websocket";
 import crypto from "crypto";
+import { createClient } from "@supabase/supabase-js";
+
+const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || "";
+const supabaseAnonKey =
+  process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || "";
+const supabase = supabaseUrl && supabaseAnonKey ? createClient(supabaseUrl, supabaseAnonKey) : null;
 
 function hashPassword(password: string): string {
   return crypto.createHash("sha256").update(password).digest("hex");
 }
 
-function requireAdmin(req: Request, res: Response, next: NextFunction) {
+async function requireAdmin(req: Request, res: Response, next: NextFunction) {
   if (!req.session?.adminId) {
-    return res.status(401).json({ message: "Unauthorized" });
+    const authHeader = String(req.headers.authorization || "");
+    if (!authHeader.toLowerCase().startsWith("bearer ") || !supabase) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const token = authHeader.slice(7).trim();
+    if (!token) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const { data, error } = await supabase.auth.getUser(token);
+    if (error || !data.user) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    return next();
   }
   next();
 }
@@ -684,6 +705,7 @@ export async function registerRoutes(
       pinCode: pin,
       status: "active",
       expiresAt,
+      attempts: 0,
       maxAttempts: 5,
     });
 
@@ -762,6 +784,7 @@ export async function registerRoutes(
             paymentMethod: "upi",
             paymentStatus: "pending_verification",
             transactionRef: paymentIntentRef,
+            verifiedByName: "",
           });
       const upiUri = buildUpiUri({
         pa: UPI_MERCHANT_ID,
@@ -834,6 +857,7 @@ export async function registerRoutes(
         paymentMethod,
         paymentStatus: "pending_verification",
         transactionRef: `${paymentMethod.toUpperCase()}-INTENT-${Date.now()}`,
+        verifiedByName: "",
       });
       res.status(201).json(payment);
     } catch (error) {

@@ -1,27 +1,20 @@
 import { useState, useEffect } from "react";
-import { apiRequest } from "@/lib/queryClient";
+import { supabase } from "@/lib/supabase";
 import logoImg from "@assets/468146293_3917545001849558_7757020803682063832_n-removebg-prev_1772140405610.png";
 
 interface AdminLoginProps {
-  onLogin: (user: { id: number; username: string; displayName: string; role: string }) => void;
+  onLogin: (user: { id: string; username: string; displayName: string; role: string }) => void;
 }
 
 export default function AdminLogin({ onLogin }: AdminLoginProps) {
-  const [needsSetup, setNeedsSetup] = useState<boolean | null>(null);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [displayName, setDisplayName] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    fetch("/api/auth/needs-setup")
-      .then(r => r.json())
-      .then(d => setNeedsSetup(d.needsSetup))
-      .catch((err) => {
-        console.error("Failed to check setup status", err);
-        setNeedsSetup(false);
-      });
+    setReady(true);
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -30,20 +23,25 @@ export default function AdminLogin({ onLogin }: AdminLoginProps) {
     setLoading(true);
 
     try {
-      const endpoint = needsSetup ? "/api/auth/setup" : "/api/auth/login";
-      const body = needsSetup
-        ? { username, password, displayName }
-        : { username, password };
+      const { data, error: signInError } = await supabase.auth.signInWithPassword({
+        email: username.trim(),
+        password,
+      });
 
-      const res = await apiRequest("POST", endpoint, body);
-      if (!res.ok) {
-        const data = await res.json();
-        setError(data.message || "Authentication failed");
+      if (signInError || !data.user) {
+        setError(signInError?.message || "Authentication failed");
         setLoading(false);
         return;
       }
-      const user = await res.json();
-      onLogin(user);
+
+      onLogin({
+        id: data.user.id,
+        username: data.user.email || username.trim(),
+        displayName:
+          (data.user.user_metadata?.displayName as string | undefined) ||
+          (data.user.email ? data.user.email.split("@")[0] : "Admin"),
+        role: "admin",
+      });
     } catch (err) {
       console.error("Admin auth request failed", err);
       const message =
@@ -55,7 +53,7 @@ export default function AdminLogin({ onLogin }: AdminLoginProps) {
     setLoading(false);
   };
 
-  if (needsSetup === null) {
+  if (!ready) {
     return (
       <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
         <div className="text-amber-400 animate-pulse tracking-widest uppercase text-sm">Loading...</div>
@@ -68,44 +66,24 @@ export default function AdminLogin({ onLogin }: AdminLoginProps) {
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <img src={logoImg} alt="Kebabil" className="h-16 mx-auto mb-4" data-testid="login-logo" />
-          <h1 className="text-2xl font-bold text-amber-400 uppercase tracking-[0.3em]" data-testid="login-title">
-            {needsSetup ? "Admin Setup" : "Admin Login"}
-          </h1>
+          <h1 className="text-2xl font-bold text-amber-400 uppercase tracking-[0.3em]" data-testid="login-title">Admin Login</h1>
           <p className="text-neutral-500 text-sm mt-2">
-            {needsSetup
-              ? "Create your owner account to get started"
-              : "Sign in to access the admin dashboard"
-            }
+            Sign in to access the admin dashboard
           </p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {needsSetup && (
-            <div>
-              <label className="text-xs uppercase tracking-widest text-neutral-500 mb-1.5 block">Display Name</label>
-              <input
-                type="text"
-                value={displayName}
-                onChange={e => setDisplayName(e.target.value)}
-                placeholder="e.g. Restaurant Owner"
-                className="w-full bg-neutral-900 border border-neutral-700 text-white px-4 py-3 focus:border-amber-400 focus:outline-none rounded-none placeholder:text-neutral-600"
-                required
-                data-testid="input-display-name"
-              />
-            </div>
-          )}
-
           <div>
-            <label className="text-xs uppercase tracking-widest text-neutral-500 mb-1.5 block">Username</label>
+            <label className="text-xs uppercase tracking-widest text-neutral-500 mb-1.5 block">Email</label>
             <input
-              type="text"
+              type="email"
               value={username}
               onChange={e => setUsername(e.target.value)}
-              placeholder="Enter username"
+              placeholder="Enter email"
               className="w-full bg-neutral-900 border border-neutral-700 text-white px-4 py-3 focus:border-amber-400 focus:outline-none rounded-none placeholder:text-neutral-600"
               required
               autoFocus
-              data-testid="input-username"
+              data-testid="input-email"
             />
           </div>
 
@@ -134,7 +112,7 @@ export default function AdminLogin({ onLogin }: AdminLoginProps) {
             className="w-full bg-amber-400 text-black py-3 font-bold uppercase tracking-widest text-sm hover:bg-amber-300 disabled:opacity-50 disabled:cursor-not-allowed rounded-none transition-colors"
             data-testid="button-login"
           >
-            {loading ? "Please wait..." : needsSetup ? "Create Account & Enter" : "Sign In"}
+            {loading ? "Please wait..." : "Sign In"}
           </button>
         </form>
 

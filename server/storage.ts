@@ -19,7 +19,102 @@ import { drizzle } from "drizzle-orm/better-sqlite3";
 import Database from "better-sqlite3";
 
 const sqlite = new Database("kebabil.db");
+
+// Initialize all tables
 sqlite.exec(`
+  CREATE TABLE IF NOT EXISTS menu_categories (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    is_active INTEGER NOT NULL DEFAULT 1
+  );
+  
+  CREATE TABLE IF NOT EXISTS menu_items (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    category_id INTEGER NOT NULL,
+    name TEXT NOT NULL,
+    description TEXT NOT NULL DEFAULT '',
+    price TEXT NOT NULL,
+    price_value INTEGER NOT NULL DEFAULT 0,
+    variants TEXT NOT NULL DEFAULT '[]',
+    addons TEXT NOT NULL DEFAULT '[]',
+    badge TEXT NOT NULL DEFAULT '',
+    image_url TEXT NOT NULL DEFAULT '',
+    type TEXT NOT NULL DEFAULT 'non_veg',
+    spice_level INTEGER NOT NULL DEFAULT 1,
+    is_available INTEGER NOT NULL DEFAULT 1,
+    prep_time_minutes INTEGER NOT NULL DEFAULT 15,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    is_active INTEGER NOT NULL DEFAULT 1
+  );
+  
+  CREATE TABLE IF NOT EXISTS restaurant_tables (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    table_number INTEGER NOT NULL UNIQUE,
+    capacity INTEGER NOT NULL DEFAULT 4,
+    status TEXT NOT NULL DEFAULT 'available',
+    active_session_id INTEGER
+  );
+  
+  CREATE TABLE IF NOT EXISTS dining_sessions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    table_id INTEGER NOT NULL,
+    session_code TEXT NOT NULL UNIQUE,
+    status TEXT NOT NULL DEFAULT 'active',
+    opened_at INTEGER NOT NULL DEFAULT (unixepoch()),
+    closed_at INTEGER
+  );
+  
+  CREATE TABLE IF NOT EXISTS orders (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    session_id INTEGER NOT NULL,
+    table_id INTEGER NOT NULL,
+    order_number TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'new',
+    subtotal INTEGER NOT NULL DEFAULT 0,
+    tax INTEGER NOT NULL DEFAULT 0,
+    total INTEGER NOT NULL DEFAULT 0,
+    notes TEXT NOT NULL DEFAULT '',
+    created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+    updated_at INTEGER NOT NULL DEFAULT (unixepoch())
+  );
+  
+  CREATE TABLE IF NOT EXISTS order_items (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    order_id INTEGER NOT NULL,
+    menu_item_id INTEGER NOT NULL,
+    menu_item_name TEXT NOT NULL,
+    quantity INTEGER NOT NULL DEFAULT 1,
+    unit_price INTEGER NOT NULL,
+    total_price INTEGER NOT NULL,
+    item_note TEXT NOT NULL DEFAULT '',
+    variant TEXT NOT NULL DEFAULT ''
+  );
+  
+  CREATE TABLE IF NOT EXISTS payments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    session_id INTEGER NOT NULL,
+    amount INTEGER NOT NULL,
+    payment_method TEXT NOT NULL DEFAULT 'pending',
+    payment_status TEXT NOT NULL DEFAULT 'pending',
+    transaction_ref TEXT NOT NULL DEFAULT '',
+    verified_by_admin_id INTEGER,
+    verified_by_name TEXT NOT NULL DEFAULT '',
+    paid_at INTEGER,
+    created_at INTEGER NOT NULL DEFAULT (unixepoch())
+  );
+  
+  CREATE TABLE IF NOT EXISTS exit_tokens (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    session_id INTEGER NOT NULL,
+    payment_id INTEGER NOT NULL,
+    token_hash TEXT NOT NULL UNIQUE,
+    issued_at INTEGER NOT NULL DEFAULT (unixepoch()),
+    expires_at INTEGER NOT NULL,
+    is_used INTEGER NOT NULL DEFAULT 0,
+    used_at INTEGER
+  );
+  
   CREATE TABLE IF NOT EXISTS exit_pins (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     order_id INTEGER NOT NULL,
@@ -36,19 +131,49 @@ sqlite.exec(`
   );
   CREATE INDEX IF NOT EXISTS idx_exit_pins_table_status ON exit_pins(table_id, status);
   CREATE INDEX IF NOT EXISTS idx_exit_pins_order ON exit_pins(order_id);
+  
+  CREATE TABLE IF NOT EXISTS door_access_logs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    exit_token_id INTEGER NOT NULL,
+    scan_time INTEGER NOT NULL DEFAULT (unixepoch()),
+    result TEXT NOT NULL DEFAULT 'success',
+    reason TEXT NOT NULL DEFAULT ''
+  );
+  
+  CREATE TABLE IF NOT EXISTS admin_users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    username TEXT NOT NULL UNIQUE,
+    password_hash TEXT NOT NULL,
+    display_name TEXT NOT NULL,
+    role TEXT NOT NULL DEFAULT 'staff',
+    is_active INTEGER NOT NULL DEFAULT 1,
+    created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+    last_login_at INTEGER
+  );
 `);
 
-const paymentColumns = sqlite.prepare("PRAGMA table_info(payments)").all() as Array<{ name: string }>;
-if (!paymentColumns.some((c) => c.name === "verified_by_admin_id")) {
-  sqlite.exec("ALTER TABLE payments ADD COLUMN verified_by_admin_id INTEGER");
-}
-if (!paymentColumns.some((c) => c.name === "verified_by_name")) {
-  sqlite.exec("ALTER TABLE payments ADD COLUMN verified_by_name TEXT NOT NULL DEFAULT ''");
+// Initialize tables from schema
+try {
+  const paymentColumns = sqlite.prepare("PRAGMA table_info(payments)").all() as Array<{ name: string }>;
+  if (paymentColumns.length > 0) {
+    if (!paymentColumns.some((c) => c.name === "verified_by_admin_id")) {
+      sqlite.exec("ALTER TABLE payments ADD COLUMN verified_by_admin_id INTEGER");
+    }
+    if (!paymentColumns.some((c) => c.name === "verified_by_name")) {
+      sqlite.exec("ALTER TABLE payments ADD COLUMN verified_by_name TEXT NOT NULL DEFAULT ''");
+    }
+  }
+} catch (e) {
+  // Tables will be created by drizzle on first query
 }
 
-const exitPinColumns = sqlite.prepare("PRAGMA table_info(exit_pins)").all() as Array<{ name: string }>;
-if (!exitPinColumns.some((c) => c.name === "pin_code")) {
-  sqlite.exec("ALTER TABLE exit_pins ADD COLUMN pin_code TEXT NOT NULL DEFAULT ''");
+try {
+  const exitPinColumns = sqlite.prepare("PRAGMA table_info(exit_pins)").all() as Array<{ name: string }>;
+  if (exitPinColumns.length > 0 && !exitPinColumns.some((c) => c.name === "pin_code")) {
+    sqlite.exec("ALTER TABLE exit_pins ADD COLUMN pin_code TEXT NOT NULL DEFAULT ''");
+  }
+} catch (e) {
+  // exit_pins table will be created above
 }
 export const db = drizzle(sqlite);
 

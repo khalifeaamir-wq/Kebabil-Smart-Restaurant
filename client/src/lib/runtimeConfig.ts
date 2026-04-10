@@ -1,3 +1,5 @@
+import { supabase } from "@/lib/supabase";
+
 type AppImportMetaEnv = ImportMetaEnv & {
   NEXT_PUBLIC_API_URL?: string;
   VITE_API_URL?: string;
@@ -18,6 +20,15 @@ function shouldRewriteRelativeApiUrl(url: string): boolean {
   return /^\/api(\/|$)/.test(url);
 }
 
+function isApiAbsoluteUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url, window.location.origin);
+    return /^\/api(\/|$)/.test(parsed.pathname);
+  } catch {
+    return false;
+  }
+}
+
 function withApiBase(url: string): string {
   if (!API_BASE_URL || !shouldRewriteRelativeApiUrl(url)) return url;
   return `${API_BASE_URL}${url}`;
@@ -27,31 +38,53 @@ export function installApiBaseFetchPatch() {
   if (typeof window === "undefined") return;
 
   const fetchRef = window.fetch.bind(window);
-  window.fetch = (input: RequestInfo | URL, init?: RequestInit) => {
+  window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+    let targetUrl: string | null = null;
+    let nextInput: RequestInfo | URL = input;
+    let nextInit: RequestInit | undefined = init;
+
     if (typeof input === "string") {
-      return fetchRef(withApiBase(input), init);
-    }
-
-    if (input instanceof URL) {
-      return fetchRef(withApiBase(input.toString()), init);
-    }
-
-    if (input instanceof Request) {
+      targetUrl = withApiBase(input);
+      nextInput = targetUrl;
+    } else if (input instanceof URL) {
+      targetUrl = withApiBase(input.toString());
+      nextInput = targetUrl;
+    } else if (input instanceof Request) {
       const reqUrl = new URL(input.url);
       if (
         API_BASE_URL &&
         reqUrl.origin === window.location.origin &&
         shouldRewriteRelativeApiUrl(reqUrl.pathname)
       ) {
-        const rewritten = new Request(
-          `${API_BASE_URL}${reqUrl.pathname}${reqUrl.search}`,
-          input,
-        );
-        return fetchRef(rewritten, init);
+        targetUrl = `${API_BASE_URL}${reqUrl.pathname}${reqUrl.search}`;
+        nextInput = new Request(targetUrl, input);
+      } else {
+        targetUrl = input.url;
       }
     }
 
-    return fetchRef(input, init);
+    if (targetUrl && isApiAbsoluteUrl(targetUrl)) {
+      const headers = new Headers(
+        input instanceof Request ? input.headers : undefined,
+      );
+      if (nextInit?.headers) {
+        new Headers(nextInit.headers).forEach((value, key) => headers.set(key, value));
+      }
+
+      if (!headers.has("Authorization")) {
+        try {
+          const { data } = await supabase.auth.getSession();
+          const token = data.session?.access_token;
+          if (token) headers.set("Authorization", `Bearer ${token}`);
+        } catch {
+          // no-op: continue without token if session is unavailable
+        }
+      }
+
+      nextInit = { ...nextInit, headers };
+    }
+
+    return fetchRef(nextInput, nextInit);
   };
 }
 
