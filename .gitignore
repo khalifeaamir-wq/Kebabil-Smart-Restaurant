@@ -12,3 +12,6 @@ vite.config.ts.*
 # Local database files
 kebabil.db
 sessions.db
+
+.vercel
+.env*.local
