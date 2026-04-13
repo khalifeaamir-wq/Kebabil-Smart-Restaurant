@@ -1,0 +1,2 @@
+id,username,passwordHash,displayName,role,isActive,createdAt,lastLoginAt
+1,aamir,573dfde51144b59c834eda892ffe2b59740b6c472dc9f7240088e108a9d158ee,aamir,owner,true,Mon Mar 16 2026 09:57:38 GMT+0000 (Coordinated Universal Time),Wed Mar 25 2026 11:17:57 GMT+0000 (Coordinated Universal Time)

@@ -99,11 +99,21 @@ export async function fetchMenuFromSupabase(): Promise<MenuCategoryData[]> {
     .from("menu")
     .select("*");
 
-  console.log(data);
-
   if (error) {
     throw error;
   }
 
-  return normalizeMenu(data ?? []);
+  const formattedMenu = (data ?? []).map((item: Record<string, unknown>) => ({
+    category: item.Category,
+    name: item.Name,
+    description: item.Description,
+    price: item.Price,
+    variants: item.Variants,
+    addons: item.Addons,
+    badge: item.Badge,
+  }));
+
+  console.log("FORMATTED MENU:", formattedMenu);
+
+  return normalizeMenu(formattedMenu);
 }

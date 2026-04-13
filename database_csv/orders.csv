@@ -1,0 +1,11 @@
+id,sessionId,tableId,orderNumber,status,subtotal,tax,total,notes,createdAt,updatedAt
+1,2,3,K-NNTW61BD,served,47800,2390,50190,,Thu Mar 19 2026 20:10:56 GMT+0000 (Coordinated Universal Time),Thu Mar 19 2026 20:11:23 GMT+0000 (Coordinated Universal Time)
+2,2,3,K-S7RGD1D2,served,192500,9625,202125,MAke the afghani chicken spicy ,Thu Mar 19 2026 20:14:29 GMT+0000 (Coordinated Universal Time),Thu Mar 19 2026 20:15:16 GMT+0000 (Coordinated Universal Time)
+3,2,3,K-ZLIUD589,served,82700,4135,86835,,Sun Mar 22 2026 22:03:13 GMT+0000 (Coordinated Universal Time),Sun Mar 22 2026 22:03:44 GMT+0000 (Coordinated Universal Time)
+4,3,15,K-3BNE8380,served,59800,2990,62790,,Sun Mar 22 2026 22:34:06 GMT+0000 (Coordinated Universal Time),Sun Mar 22 2026 22:34:36 GMT+0000 (Coordinated Universal Time)
+5,4,15,K-6IC57320,served,82700,4135,86835,,Sun Mar 22 2026 23:04:34 GMT+0000 (Coordinated Universal Time),Sun Mar 22 2026 23:04:51 GMT+0000 (Coordinated Universal Time)
+6,5,15,K-BIVFB7EF,served,186500,9325,195825,spicy,Mon Mar 23 2026 18:16:13 GMT+0000 (Coordinated Universal Time),Mon Mar 23 2026 18:16:53 GMT+0000 (Coordinated Universal Time)
+7,6,15,K-PASV2601,served,319500,15975,335475,jugliug;ig;iog;iig;oig,Mon Mar 23 2026 18:26:55 GMT+0000 (Coordinated Universal Time),Mon Mar 23 2026 18:27:19 GMT+0000 (Coordinated Universal Time)
+8,7,15,K-GZNG472B,served,47800,2390,50190,,Tue Mar 24 2026 07:24:17 GMT+0000 (Coordinated Universal Time),Tue Mar 24 2026 07:24:35 GMT+0000 (Coordinated Universal Time)
+9,8,15,K-KW5YCA09,served,175500,8775,184275,spicy,Tue Mar 24 2026 09:47:17 GMT+0000 (Coordinated Universal Time),Tue Mar 24 2026 09:47:36 GMT+0000 (Coordinated Universal Time)
+10,9,15,K-NNS2ACC9,served,47800,2390,50190,kdewid,Wed Mar 25 2026 11:01:05 GMT+0000 (Coordinated Universal Time),Wed Mar 25 2026 11:02:35 GMT+0000 (Coordinated Universal Time)

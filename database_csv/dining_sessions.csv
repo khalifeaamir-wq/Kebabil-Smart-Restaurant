@@ -1,0 +1,10 @@
+id,tableId,sessionCode,status,openedAt,closedAt
+1,1,39b0b1f3368b,active,Thu Mar 19 2026 19:45:07 GMT+0000 (Coordinated Universal Time),
+2,3,b68f6a53cd5c,exited,Thu Mar 19 2026 20:10:46 GMT+0000 (Coordinated Universal Time),Sun Mar 22 2026 22:08:39 GMT+0000 (Coordinated Universal Time)
+3,15,a5b10ed6e026,paid,Sun Mar 22 2026 22:33:58 GMT+0000 (Coordinated Universal Time),
+4,15,1451914ea515,exited,Sun Mar 22 2026 23:04:20 GMT+0000 (Coordinated Universal Time),Sun Mar 22 2026 23:08:30 GMT+0000 (Coordinated Universal Time)
+5,15,9ff1b870a41b,exited,Mon Mar 23 2026 18:15:34 GMT+0000 (Coordinated Universal Time),Mon Mar 23 2026 18:18:52 GMT+0000 (Coordinated Universal Time)
+6,15,bbf67da703fc,exited,Mon Mar 23 2026 18:26:13 GMT+0000 (Coordinated Universal Time),Mon Mar 23 2026 18:28:37 GMT+0000 (Coordinated Universal Time)
+7,15,e4ab9dfdd2ac,exited,Tue Mar 24 2026 07:24:10 GMT+0000 (Coordinated Universal Time),Tue Mar 24 2026 07:38:11 GMT+0000 (Coordinated Universal Time)
+8,15,b5f479f77ddb,exited,Tue Mar 24 2026 09:46:47 GMT+0000 (Coordinated Universal Time),Tue Mar 24 2026 09:48:39 GMT+0000 (Coordinated Universal Time)
+9,15,19678511d3ad,paid,Wed Mar 25 2026 11:00:54 GMT+0000 (Coordinated Universal Time),
