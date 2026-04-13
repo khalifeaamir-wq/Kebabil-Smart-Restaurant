@@ -6,6 +6,7 @@ import { ShoppingCart, Plus, Minus, ArrowLeft, Flame, Send, Clock, X, CreditCard
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { wsClient } from "@/lib/websocket";
+import { fetchMenuFromSupabase, type MenuCategoryData } from "@/lib/menu";
 import { QRCodeSVG } from "qrcode.react";
 import logoImg from "@assets/468146293_3917545001849558_7757020803682063832_n-removebg-prev_1772140405610.png";
 
@@ -32,12 +33,6 @@ interface MenuItemData {
   spiceLevel: number;
   isAvailable: boolean;
   prepTimeMinutes: number;
-}
-
-interface MenuCategoryData {
-  category: string;
-  categoryId: number;
-  items: MenuItemData[];
 }
 
 interface OrderData {
@@ -145,8 +140,8 @@ export default function TableOrder() {
   }, [scanResult]);
 
   const { data: menuData = [] } = useQuery<MenuCategoryData[]>({
-    queryKey: ["/api/menu"],
-    queryFn: async () => { const res = await fetch("/api/menu"); return res.json(); },
+    queryKey: ["supabase-menu"],
+    queryFn: fetchMenuFromSupabase,
   });
 
   const { data: sessionOrders = [], refetch: refetchOrders } = useQuery<OrderData[]>({
@@ -693,5 +688,4 @@ export default function TableOrder() {
     </div>
   );
 }
-
 

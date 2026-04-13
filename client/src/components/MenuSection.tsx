@@ -2,31 +2,12 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
 import { useQuery } from "@tanstack/react-query";
-
-interface MenuItemData {
-  id: number;
-  name: string;
-  description: string;
-  price: string;
-  variants: string[];
-  addons: string[];
-  badge: string;
-}
-
-interface MenuCategoryData {
-  category: string;
-  categoryId: number;
-  items: MenuItemData[];
-}
+import { fetchMenuFromSupabase, type MenuCategoryData } from "@/lib/menu";
 
 export function MenuSection() {
   const { data: menuData = [], isLoading } = useQuery<MenuCategoryData[]>({
-    queryKey: ["/api/menu"],
-    queryFn: async () => {
-      const res = await fetch("/api/menu");
-      if (!res.ok) throw new Error("Failed to fetch menu");
-      return res.json();
-    },
+    queryKey: ["supabase-menu"],
+    queryFn: fetchMenuFromSupabase,
   });
 
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
