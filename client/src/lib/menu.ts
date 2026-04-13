@@ -104,6 +104,7 @@ export async function fetchMenuFromSupabase(): Promise<MenuCategoryData[]> {
   }
 
   const formattedMenu = (data ?? []).map((item: Record<string, unknown>) => ({
+    id: item.id,
     category: item.Category,
     name: item.Name,
     description: item.Description,
