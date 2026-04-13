@@ -93,28 +93,3 @@ const normalizeMenu = (rows: unknown[]): MenuCategoryData[] => {
 
   return Array.from(grouped.values());
 };
-
-export async function fetchMenuFromSupabase(): Promise<MenuCategoryData[]> {
-  const { data, error } = await supabase
-    .from("menu")
-    .select("*");
-
-  if (error) {
-    throw error;
-  }
-
-  const formattedMenu = (data ?? []).map((item: Record<string, unknown>) => ({
-    id: item.id,
-    category: item.Category,
-    name: item.Name,
-    description: item.Description,
-    price: item.Price,
-    variants: item.Variants,
-    addons: item.Addons,
-    badge: item.Badge,
-  }));
-
-  console.log("FINAL MENU DATA:", formattedMenu);
-
-  return normalizeMenu(formattedMenu);
-}

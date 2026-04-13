@@ -6,7 +6,8 @@ import { ShoppingCart, Plus, Minus, ArrowLeft, Flame, Send, Clock, X, CreditCard
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { wsClient } from "@/lib/websocket";
-import { fetchMenuFromSupabase, type MenuCategoryData } from "@/lib/menu";
+import { supabase } from "@/lib/supabase";
+import { normalizeMenu, type MenuCategoryData } from "@/lib/menu";
 import { QRCodeSVG } from "qrcode.react";
 import logoImg from "@assets/468146293_3917545001849558_7757020803682063832_n-removebg-prev_1772140405610.png";
 
@@ -141,7 +142,31 @@ export default function TableOrder() {
 
   const { data: menuData = [] } = useQuery<MenuCategoryData[]>({
     queryKey: ["supabase-menu"],
-    queryFn: fetchMenuFromSupabase,
+    queryFn: async () => {
+      const { data: rawMenu, error } = await supabase
+        .from("menu")
+        .select("*");
+
+      if (error) {
+        console.error("Menu fetch error:", error);
+        return [];
+      }
+
+      const menu = rawMenu?.map(item => ({
+        id: item.id,
+        category: item.Category,
+        name: item.Name,
+        description: item.Description,
+        price: item.Price,
+        variants: item.Variants,
+        addons: item.Addons,
+        badge: item.Badge
+      })) || [];
+
+      console.log("MENU FROM SUPABASE:", menu);
+
+      return normalizeMenu(menu);
+    },
   });
 
   const { data: sessionOrders = [], refetch: refetchOrders } = useQuery<OrderData[]>({

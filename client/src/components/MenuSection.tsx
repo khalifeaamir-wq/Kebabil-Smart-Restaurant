@@ -2,12 +2,37 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
 import { useQuery } from "@tanstack/react-query";
-import { fetchMenuFromSupabase, type MenuCategoryData } from "@/lib/menu";
+import { supabase } from "@/lib/supabase";
+import { normalizeMenu, type MenuCategoryData } from "@/lib/menu";
 
 export function MenuSection() {
   const { data: menuData = [], isLoading } = useQuery<MenuCategoryData[]>({
     queryKey: ["supabase-menu"],
-    queryFn: fetchMenuFromSupabase,
+    queryFn: async () => {
+      const { data: rawMenu, error } = await supabase
+        .from("menu")
+        .select("*");
+
+      if (error) {
+        console.error("Menu fetch error:", error);
+        return [];
+      }
+
+      const menu = rawMenu?.map(item => ({
+        id: item.id,
+        category: item.Category,
+        name: item.Name,
+        description: item.Description,
+        price: item.Price,
+        variants: item.Variants,
+        addons: item.Addons,
+        badge: item.Badge
+      })) || [];
+
+      console.log("MENU FROM SUPABASE:", menu);
+
+      return normalizeMenu(menu);
+    },
   });
 
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
