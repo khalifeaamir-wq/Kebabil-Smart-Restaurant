@@ -46,13 +46,6 @@ Premium restaurant website for Kebabil — a Middle Eastern & Indian fusion keba
 - `POST /api/auth/login` — Login with username/password
 - `POST /api/auth/logout` — Destroy session
 - `GET /api/auth/me` — Check current auth status
-### Menu
-- `GET /api/menu` — Returns all menu categories with items
-- `POST /api/menu/categories` — Create category
-- `POST /api/menu/items` — Create menu item
-- `PATCH /api/menu/items/:id` — Update menu item
-- `DELETE /api/menu/items/:id` — Delete menu item
-
 ### Tables & Sessions
 - `GET /api/tables` — List all tables
 - `POST /api/tables` — Create table

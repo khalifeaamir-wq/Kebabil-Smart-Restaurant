@@ -113,7 +113,7 @@ export async function fetchMenuFromSupabase(): Promise<MenuCategoryData[]> {
     badge: item.Badge,
   }));
 
-  console.log("FORMATTED MENU:", formattedMenu);
+  console.log("FINAL MENU DATA:", formattedMenu);
 
   return normalizeMenu(formattedMenu);
 }
